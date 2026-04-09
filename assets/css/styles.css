@@ -122,8 +122,8 @@ a{
   position:absolute;
   inset:0;
   background:
-    linear-gradient(180deg,rgba(8,10,12,.38),rgba(8,10,12,.82)),
-    linear-gradient(90deg,rgba(8,10,12,.84) 0%,rgba(8,10,12,.42) 55%,rgba(8,10,12,.22) 100%);
+    linear-gradient(180deg,rgba(8,10,12,.46),rgba(8,10,12,.86)),
+    linear-gradient(90deg,rgba(8,10,12,.88) 0%,rgba(8,10,12,.50) 52%,rgba(8,10,12,.28) 100%);
 }
 
 .hero-media{
@@ -208,7 +208,7 @@ h3{
 }
 
 .section{
-  padding:78px 0;
+  padding:64px 0;
 }
 
 .section-alt{
@@ -216,8 +216,8 @@ h3{
 }
 
 .section-head{
-  max-width:760px;
-  margin-bottom:34px;
+  max-width:720px;
+  margin-bottom:26px;
 }
 
 .muted,
@@ -227,15 +227,15 @@ h3{
 
 .grid-2{
   display:grid;
-  grid-template-columns:1.1fr .9fr;
-  gap:28px;
+  grid-template-columns:1.08fr .92fr;
+  gap:24px;
   align-items:center;
 }
 
 .grid-3{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:20px;
+  gap:18px;
 }
 
 .grid-4{
@@ -251,7 +251,7 @@ h3{
   background:linear-gradient(180deg,var(--panel),var(--panel2));
   border:1px solid rgba(255,255,255,.06);
   border-radius:18px;
-  padding:24px;
+  padding:22px;
 }
 
 .feature-card:before{
