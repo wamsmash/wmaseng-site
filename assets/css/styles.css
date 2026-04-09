@@ -46,11 +46,11 @@ a{
 }
 
 .header-inner{
-  min-height:78px;
+  min-height:68px;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:20px;
+  gap:18px;
 }
 
 .brand{
@@ -61,10 +61,10 @@ a{
 }
 
 .brand img{
-  width:54px;
-  height:54px;
+  width:46px;
+  height:46px;
   object-fit:contain;
-  border-radius:10px;
+  border-radius:8px;
   background:#dde3e8;
   padding:4px;
 }
@@ -76,11 +76,11 @@ a{
 }
 
 .brand-text strong{
-  font-size:1.05rem;
+  font-size:.98rem;
 }
 
 .brand-text span{
-  font-size:.78rem;
+  font-size:.72rem;
   color:var(--muted);
   font-weight:600;
 }
@@ -111,7 +111,7 @@ a{
 
 .hero{
   position:relative;
-  min-height:72vh;
+  min-height:64vh;
   display:grid;
   align-items:end;
   overflow:hidden;
@@ -135,8 +135,8 @@ a{
 
 .hero-content{
   position:relative;
-  padding:110px 0 72px;
-  max-width:760px;
+  padding:84px 0 56px;
+  max-width:680px;
 }
 
 .eyebrow{
@@ -160,7 +160,8 @@ h3{
 }
 
 h1{
-  font-size:clamp(2.6rem,7vw,5rem);
+  font-size:clamp(2.1rem,5.2vw,4.1rem);
+  line-height:1.02;
   text-shadow:0 3px 10px rgba(0,0,0,.75),0 1px 2px rgba(0,0,0,.95);
 }
 
@@ -173,9 +174,9 @@ h3{
 }
 
 .lead{
-  font-size:1.08rem;
+  font-size:1rem;
   color:#f2f5f7;
-  max-width:720px;
+  max-width:640px;
   text-shadow:0 2px 8px rgba(0,0,0,.75);
 }
 
@@ -442,7 +443,7 @@ textarea{
     position:absolute;
     left:16px;
     right:16px;
-    top:78px;
+    top:68px;
     background:rgba(17,20,24,.98);
     border:1px solid rgba(255,255,255,.08);
     border-radius:18px;
