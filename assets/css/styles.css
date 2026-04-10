@@ -381,6 +381,13 @@ h3{
   display:grid;
   grid-template-columns:.9fr 1.1fr;
   gap:26px;
+  align-items:start;
+}
+
+.contact-wrap > .card,
+.contact-wrap > .form-panel,
+.contact-wrap > .info-panel{
+  height:auto;
 }
 
 .download-box{
