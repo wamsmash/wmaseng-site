@@ -233,8 +233,14 @@ h3{
 }
 
 .section-head{
-  max-width:680px;
-  margin-bottom:22px;
+  max-width:620px;
+  margin-bottom:18px;
+}
+
+.section-head p{
+  margin:0;
+  max-width:58ch;
+  line-height:1.55;
 }
 
 .muted,
@@ -253,7 +259,7 @@ h3{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:16px;
-  align-items:start;
+  align-items:stretch;
 }
 
 .grid-4{
@@ -269,12 +275,15 @@ h3{
   background:linear-gradient(180deg,rgba(25,31,37,.96),rgba(20,25,30,.96));
   border:1px solid rgba(255,255,255,.06);
   border-radius:18px;
-  padding:18px 18px 16px;
+  padding:16px 18px 15px;
   box-shadow:0 12px 30px rgba(0,0,0,.18);
 }
 
 .feature-card{
   min-height:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
 }
 
 .feature-card:before{
