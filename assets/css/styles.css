@@ -134,7 +134,7 @@ a{
   inset:0;
   background-size:cover;
   background-position:center;
-  filter:saturate(.92) brightness(.86);
+  filter:saturate(.92) brightness(.68);
 }
 
 .hero-content{
