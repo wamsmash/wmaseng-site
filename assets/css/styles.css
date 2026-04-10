@@ -114,9 +114,9 @@ a{
 
 .hero{
   position:relative;
-  min-height:62vh;
+  min-height:68vh;
   display:grid;
-  align-items:end;
+  align-items:center;
   overflow:hidden;
 }
 
@@ -125,8 +125,8 @@ a{
   position:absolute;
   inset:0;
   background:
-    linear-gradient(180deg,rgba(8,10,12,.52),rgba(8,10,12,.88)),
-    linear-gradient(90deg,rgba(8,10,12,.90) 0%,rgba(8,10,12,.58) 48%,rgba(8,10,12,.34) 100%);
+    linear-gradient(180deg,rgba(8,10,12,.58),rgba(8,10,12,.88)),
+    linear-gradient(90deg,rgba(8,10,12,.82) 0%,rgba(8,10,12,.62) 34%,rgba(8,10,12,.18) 100%);
 }
 
 .hero-media{
@@ -134,16 +134,16 @@ a{
   inset:0;
   background-size:cover;
   background-position:center;
-  filter:saturate(.92) brightness(.68);
+  filter:saturate(.92) brightness(.78);
 }
 
 .hero-content{
   position:relative;
-  padding:72px 0 48px;
-  max-width:760px;
-  margin-left:auto;
+  padding:84px 0 56px;
+  max-width:620px;
+  margin-left:0;
   margin-right:auto;
-  text-align:center;
+  text-align:left;
 }
 
 .eyebrow{
@@ -168,11 +168,11 @@ h3{
 }
 
 h1{
-  font-size:clamp(2rem,4.2vw,3.8rem);
+  font-size:clamp(2.3rem,4.4vw,4rem);
   line-height:1;
   letter-spacing:-.02em;
   text-shadow:0 3px 10px rgba(0,0,0,.78),0 1px 2px rgba(0,0,0,.98);
-  max-width:13ch;
+  max-width:11ch;
 }
 
 h2{
@@ -186,7 +186,7 @@ h3{
 .lead{
   font-size:1rem;
   color:#f2f5f7;
-  max-width:580px;
+  max-width:560px;
   margin-top:10px;
   text-shadow:0 2px 8px rgba(0,0,0,.78);
 }
@@ -196,7 +196,7 @@ h3{
   display:flex;
   gap:14px;
   flex-wrap:wrap;
-  margin-top:18px;
+  margin-top:20px;
 }
 
 .btn{
@@ -223,8 +223,7 @@ h3{
 }
 
 .section-alt{
-  background:
-    linear-gradient(180deg,#13181d,#1a2026);
+  background:linear-gradient(180deg,#13181d,#1a2026);
 }
 
 .section-head{
@@ -436,11 +435,6 @@ textarea{
   .grid-4{
     grid-template-columns:1fr 1fr;
   }
-
-  .hero-content{
-    margin-left:120px;
-    max-width:680px;
-  }
 }
 
 @media (max-width:760px){
@@ -483,18 +477,20 @@ textarea{
   }
 
   .hero{
-    min-height:56vh;
+    min-height:58vh;
   }
 
   .hero-content{
     padding:54px 0 38px;
     max-width:100%;
     margin-left:0;
+    margin-right:0;
+    text-align:left;
   }
 
   h1{
     max-width:12ch;
-    font-size:clamp(1.8rem,9vw,2.8rem);
+    font-size:clamp(1.9rem,9vw,3rem);
   }
 
   .grid-3,
