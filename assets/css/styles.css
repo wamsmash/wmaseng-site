@@ -185,9 +185,9 @@ h2{
 }
 
 h3{
-  font-size:1.08rem;
+  font-size:1.04rem;
   line-height:1.16;
-  margin-bottom:10px;
+  margin:0 0 8px;
 }
 
 .lead{
@@ -234,7 +234,7 @@ h3{
 
 .section-head{
   max-width:680px;
-  margin-bottom:24px;
+  margin-bottom:22px;
 }
 
 .muted,
@@ -252,7 +252,8 @@ h3{
 .grid-3{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:18px;
+  gap:16px;
+  align-items:start;
 }
 
 .grid-4{
@@ -268,24 +269,28 @@ h3{
   background:linear-gradient(180deg,rgba(25,31,37,.96),rgba(20,25,30,.96));
   border:1px solid rgba(255,255,255,.06);
   border-radius:18px;
-  padding:20px 20px 18px;
+  padding:18px 18px 16px;
   box-shadow:0 12px 30px rgba(0,0,0,.18);
+}
+
+.feature-card{
+  min-height:100%;
 }
 
 .feature-card:before{
   content:"";
   display:block;
-  width:34px;
+  width:30px;
   height:3px;
   background:var(--accent);
-  margin-bottom:12px;
+  margin-bottom:10px;
   border-radius:999px;
 }
 
 .feature-card p{
   margin:0;
-  font-size:.96rem;
-  line-height:1.55;
+  font-size:.94rem;
+  line-height:1.5;
 }
 
 .media-card{
