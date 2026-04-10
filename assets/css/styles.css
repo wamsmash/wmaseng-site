@@ -193,8 +193,9 @@ h3{
 .lead{
   font-size:.95rem;
   color:#f2f5f7;
-  max-width:54ch;
-  margin-top:8px;
+  max-width:66ch;
+  margin-top:12px;
+  line-height:1.65;
 }
 
 .hero-actions,
