@@ -141,7 +141,7 @@ a{
   justify-content:flex-start;
   width:min(1500px,calc(100% - 40px));
   margin:0 auto;
-  padding:56px 0;
+  padding:56px 0 56px 165px;
 }
 
 .hero-panel{
