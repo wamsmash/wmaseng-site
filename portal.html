@@ -52,29 +52,36 @@
         </div>
       </div>
 
-      <div class="grid-3">
-<div class="card">
-  <h3>Files</h3>
-  <div id="filesCardContent" class="muted">Loading files</div>
-</div>
+      <div class="split-panel">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <h3 style="margin:0">Commercial</h3>
+          </div>
+          <div id="commercialCardContent" class="muted" style="margin-top:14px">Loading commercial documents</div>
+        </div>
 
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <h3 style="margin:0">Technical Files</h3>
+            <button id="filesExpandBtn" class="btn" type="button" style="min-height:38px;padding:0 14px">View all</button>
+          </div>
+          <div id="filesCardContent" class="muted" style="margin-top:14px">Loading files</div>
+        </div>
+      </div>
+
+      <div class="split-panel" style="margin-top:16px">
         <div class="card">
           <h3>Jobs</h3>
           <div id="jobsCardContent" class="muted">Loading jobs</div>
         </div>
 
         <div class="card">
-          <h3>Files</h3>
-          <p class="muted">Protected drawing packs, PDFs and downloadable files will appear here</p>
-        </div>
-      </div>
-
-      <div class="grid-3" style="margin-top:16px">
-        <div class="card">
           <h3>Messages</h3>
           <p class="muted">Project communication and photo updates will appear here</p>
         </div>
+      </div>
 
+      <div class="split-panel" style="margin-top:16px">
         <div class="card">
           <h3>Request Quote</h3>
           <p class="muted">Portal quote request workflow will appear here</p>
