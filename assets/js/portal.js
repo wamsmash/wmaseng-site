@@ -92,6 +92,33 @@
     quotesCardContent.innerHTML = html;
   }
 
+  function renderJobs(jobs) {
+    const jobsCardContent = document.getElementById("jobsCardContent");
+
+    if (!jobsCardContent) {
+      return;
+    }
+
+    if (!jobs || jobs.length === 0) {
+      jobsCardContent.innerHTML = "<p>No live jobs available yet</p>";
+      return;
+    }
+
+    const html = jobs
+      .map(function (job) {
+        return `
+          <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+            <div style="font-weight:700;color:#edf1f4">${job.job_ref}</div>
+            <div style="margin-top:4px;color:#edf1f4">${job.title}</div>
+            <div style="margin-top:6px;font-size:.92rem;color:#a8b2bc">Status: ${job.status}</div>
+          </div>
+        `;
+      })
+      .join("");
+
+    jobsCardContent.innerHTML = html;
+  }
+
   async function loadQuotes(companyId) {
     const { data, error } = await supabaseClient
       .from("wmas_quotes")
@@ -108,6 +135,24 @@
     }
 
     renderQuotes(data || []);
+  }
+
+  async function loadJobs(companyId) {
+    const { data, error } = await supabaseClient
+      .from("wmas_jobs")
+      .select("job_ref, title, status, started_at")
+      .eq("company_id", companyId)
+      .order("started_at", { ascending: false });
+
+    if (error) {
+      const jobsCardContent = document.getElementById("jobsCardContent");
+      if (jobsCardContent) {
+        jobsCardContent.textContent = "Unable to load jobs";
+      }
+      return;
+    }
+
+    renderJobs(data || []);
   }
 
   async function handlePortalPage() {
@@ -149,6 +194,7 @@
         : "Client access is active. Your quotes, jobs, files and messages will appear here";
 
     await loadQuotes(profile.company_id);
+    await loadJobs(profile.company_id);
 
     if (signOutBtn) {
       signOutBtn.addEventListener("click", async function () {
