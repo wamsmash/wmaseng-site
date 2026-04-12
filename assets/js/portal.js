@@ -104,13 +104,82 @@
       return;
     }
 
+    function getStatusMeta(status) {
+      switch (status) {
+        case "estimating":
+          return {
+            label: "Estimating",
+            bg: "rgba(208,165,47,.14)",
+            border: "rgba(208,165,47,.34)",
+            color: "#f0c75a"
+          };
+        case "quoted":
+          return {
+            label: "Quoted",
+            bg: "rgba(214,135,52,.14)",
+            border: "rgba(214,135,52,.34)",
+            color: "#f0a85a"
+          };
+        case "in_progress":
+          return {
+            label: "In progress",
+            bg: "rgba(65,145,255,.14)",
+            border: "rgba(65,145,255,.34)",
+            color: "#79b2ff"
+          };
+        case "complete":
+          return {
+            label: "Completed",
+            bg: "rgba(108,186,92,.14)",
+            border: "rgba(108,186,92,.34)",
+            color: "#8fda7d"
+          };
+        case "issued":
+          return {
+            label: "Issued",
+            bg: "rgba(124,136,155,.14)",
+            border: "rgba(124,136,155,.34)",
+            color: "#c8d0db"
+          };
+        case "pending_po":
+          return {
+            label: "Pending PO",
+            bg: "rgba(170,170,170,.10)",
+            border: "rgba(170,170,170,.24)",
+            color: "#d7dee5"
+          };
+        default:
+          return {
+            label: status || "Unknown",
+            bg: "rgba(170,170,170,.10)",
+            border: "rgba(170,170,170,.24)",
+            color: "#d7dee5"
+          };
+      }
+    }
+
     const html = jobs
       .map(function (job) {
+        const status = getStatusMeta(job.status);
+
         return `
           <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
             <div style="font-weight:700;color:#edf1f4">${job.job_ref}</div>
             <div style="margin-top:4px;color:#edf1f4">${job.title}</div>
-            <div style="margin-top:6px;font-size:.92rem;color:#a8b2bc">Status: ${job.status}</div>
+            <div style="margin-top:10px">
+              <span style="
+                display:inline-flex;
+                align-items:center;
+                min-height:30px;
+                padding:0 10px;
+                border-radius:999px;
+                border:1px solid ${status.border};
+                background:${status.bg};
+                color:${status.color};
+                font-size:.88rem;
+                font-weight:700;
+              ">${status.label}</span>
+            </div>
           </div>
         `;
       })
