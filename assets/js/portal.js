@@ -77,13 +77,75 @@
       return;
     }
 
+    function getQuoteStatusMeta(status) {
+      switch (status) {
+        case "draft":
+          return {
+            label: "Draft",
+            bg: "rgba(170,170,170,.10)",
+            border: "rgba(170,170,170,.24)",
+            color: "#d7dee5"
+          };
+        case "issued":
+          return {
+            label: "Quoted",
+            bg: "rgba(214,135,52,.14)",
+            border: "rgba(214,135,52,.34)",
+            color: "#f0a85a"
+          };
+        case "accepted":
+          return {
+            label: "Accepted",
+            bg: "rgba(108,186,92,.14)",
+            border: "rgba(108,186,92,.34)",
+            color: "#8fda7d"
+          };
+        case "expired":
+          return {
+            label: "Expired",
+            bg: "rgba(124,136,155,.14)",
+            border: "rgba(124,136,155,.34)",
+            color: "#c8d0db"
+          };
+        case "withdrawn":
+          return {
+            label: "Withdrawn",
+            bg: "rgba(124,136,155,.14)",
+            border: "rgba(124,136,155,.34)",
+            color: "#c8d0db"
+          };
+        default:
+          return {
+            label: status || "Unknown",
+            bg: "rgba(170,170,170,.10)",
+            border: "rgba(170,170,170,.24)",
+            color: "#d7dee5"
+          };
+      }
+    }
+
     const html = quotes
       .map(function (quote) {
+        const status = getQuoteStatusMeta(quote.status);
+
         return `
           <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
             <div style="font-weight:700;color:#edf1f4">${quote.quote_ref}</div>
             <div style="margin-top:4px;color:#edf1f4">${quote.title}</div>
-            <div style="margin-top:6px;font-size:.92rem;color:#a8b2bc">Status: ${quote.status}</div>
+            <div style="margin-top:10px">
+              <span style="
+                display:inline-flex;
+                align-items:center;
+                min-height:30px;
+                padding:0 10px;
+                border-radius:999px;
+                border:1px solid ${status.border};
+                background:${status.bg};
+                color:${status.color};
+                font-size:.88rem;
+                font-weight:700;
+              ">${status.label}</span>
+            </div>
           </div>
         `;
       })
@@ -188,6 +250,28 @@
     jobsCardContent.innerHTML = html;
   }
 
+  function getFileTypeLabel(file) {
+    const name = (file.file_name || "").toLowerCase();
+
+    if (name.endsWith(".pdf")) {
+      return "PDF";
+    }
+
+    if (name.endsWith(".zip")) {
+      return "ZIP";
+    }
+
+    if (name.endsWith(".dwg")) {
+      return "DWG";
+    }
+
+    if (name.endsWith(".dxf")) {
+      return "DXF";
+    }
+
+    return "File";
+  }
+
   function renderFiles(files) {
     const filesCardContent = document.getElementById("filesCardContent");
 
@@ -202,10 +286,39 @@
 
     const html = files
       .map(function (file) {
+        const typeLabel = getFileTypeLabel(file);
+        const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
+
         return `
           <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
             <div style="font-weight:700;color:#edf1f4">${file.title}</div>
-            <div style="margin-top:4px;font-size:.92rem;color:#a8b2bc">${file.file_name}</div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              <span style="
+                display:inline-flex;
+                align-items:center;
+                min-height:28px;
+                padding:0 10px;
+                border-radius:999px;
+                border:1px solid rgba(124,136,155,.28);
+                background:rgba(124,136,155,.12);
+                color:#d7dee5;
+                font-size:.84rem;
+                font-weight:700;
+              ">${typeLabel}</span>
+              <span style="
+                display:inline-flex;
+                align-items:center;
+                min-height:28px;
+                padding:0 10px;
+                border-radius:999px;
+                border:1px solid rgba(208,165,47,.28);
+                background:rgba(208,165,47,.12);
+                color:#f0c75a;
+                font-size:.84rem;
+                font-weight:700;
+              ">${revisionLabel}</span>
+            </div>
+            <div style="margin-top:8px;font-size:.92rem;color:#a8b2bc">${file.file_name}</div>
             <div style="margin-top:10px">
               <a class="btn" href="${file.downloadUrl}" target="_blank" rel="noopener noreferrer">Download</a>
             </div>
@@ -256,7 +369,7 @@
   async function loadFiles(companyId) {
     const { data, error } = await supabaseClient
       .from("wmas_job_files")
-      .select("title, file_name, storage_path, created_at")
+      .select("title, file_name, storage_path, file_type, revision, created_at")
       .eq("company_id", companyId)
       .eq("visible_to_client", true)
       .order("created_at", { ascending: false });
