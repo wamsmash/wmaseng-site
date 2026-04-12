@@ -119,6 +119,35 @@
     jobsCardContent.innerHTML = html;
   }
 
+  function renderFiles(files) {
+    const filesCardContent = document.getElementById("filesCardContent");
+
+    if (!filesCardContent) {
+      return;
+    }
+
+    if (!files || files.length === 0) {
+      filesCardContent.innerHTML = "<p>No files available yet</p>";
+      return;
+    }
+
+    const html = files
+      .map(function (file) {
+        return `
+          <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+            <div style="font-weight:700;color:#edf1f4">${file.title}</div>
+            <div style="margin-top:4px;font-size:.92rem;color:#a8b2bc">${file.file_name}</div>
+            <div style="margin-top:10px">
+              <a class="btn" href="${file.downloadUrl}" target="_blank" rel="noopener noreferrer">Download</a>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    filesCardContent.innerHTML = html;
+  }
+
   async function loadQuotes(companyId) {
     const { data, error } = await supabaseClient
       .from("wmas_quotes")
@@ -153,6 +182,38 @@
     }
 
     renderJobs(data || []);
+  }
+
+  async function loadFiles(companyId) {
+    const { data, error } = await supabaseClient
+      .from("wmas_job_files")
+      .select("title, file_name, storage_path, created_at")
+      .eq("company_id", companyId)
+      .eq("visible_to_client", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      const filesCardContent = document.getElementById("filesCardContent");
+      if (filesCardContent) {
+        filesCardContent.textContent = "Unable to load files";
+      }
+      return;
+    }
+
+    const filesWithUrls = await Promise.all(
+      (data || []).map(async function (file) {
+        const { data: signedData } = await supabaseClient.storage
+          .from("wmas-job-files")
+          .createSignedUrl(file.storage_path, 3600);
+
+        return {
+          ...file,
+          downloadUrl: signedData?.signedUrl || "#"
+        };
+      })
+    );
+
+    renderFiles(filesWithUrls);
   }
 
   async function handlePortalPage() {
@@ -195,6 +256,7 @@
 
     await loadQuotes(profile.company_id);
     await loadJobs(profile.company_id);
+    await loadFiles(profile.company_id);
 
     if (signOutBtn) {
       signOutBtn.addEventListener("click", async function () {
