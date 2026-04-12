@@ -65,6 +65,51 @@
     });
   }
 
+  function renderQuotes(quotes) {
+    const quotesCardContent = document.getElementById("quotesCardContent");
+
+    if (!quotesCardContent) {
+      return;
+    }
+
+    if (!quotes || quotes.length === 0) {
+      quotesCardContent.innerHTML = "<p>No quotes available yet</p>";
+      return;
+    }
+
+    const html = quotes
+      .map(function (quote) {
+        return `
+          <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+            <div style="font-weight:700;color:#edf1f4">${quote.quote_ref}</div>
+            <div style="margin-top:4px;color:#edf1f4">${quote.title}</div>
+            <div style="margin-top:6px;font-size:.92rem;color:#a8b2bc">Status: ${quote.status}</div>
+          </div>
+        `;
+      })
+      .join("");
+
+    quotesCardContent.innerHTML = html;
+  }
+
+  async function loadQuotes(companyId) {
+    const { data, error } = await supabaseClient
+      .from("wmas_quotes")
+      .select("quote_ref, title, status, issued_at")
+      .eq("company_id", companyId)
+      .order("issued_at", { ascending: false });
+
+    if (error) {
+      const quotesCardContent = document.getElementById("quotesCardContent");
+      if (quotesCardContent) {
+        quotesCardContent.textContent = "Unable to load quotes";
+      }
+      return;
+    }
+
+    renderQuotes(data || []);
+  }
+
   async function handlePortalPage() {
     const welcomeEl = document.getElementById("portalWelcome");
     const subtextEl = document.getElementById("portalSubtext");
@@ -102,6 +147,8 @@
       profile.role === "admin"
         ? "Admin access is active. Portal modules can now be built onto this shell"
         : "Client access is active. Your quotes, jobs, files and messages will appear here";
+
+    await loadQuotes(profile.company_id);
 
     if (signOutBtn) {
       signOutBtn.addEventListener("click", async function () {
