@@ -1,1 +1,52 @@
-document.addEventListener("DOMContentLoaded",function(){const t=document.querySelector("[data-nav-toggle]"),n=document.querySelector(".main-nav");if(t&&n){t.addEventListener("click",function(){n.classList.toggle("open")})}const e=document.getElementById("contactForm");if(e){e.addEventListener("submit",function(t){t.preventDefault();const n=document.getElementById("name").value.trim(),o=document.getElementById("email").value.trim(),i=document.getElementById("company").value.trim(),c=document.getElementById("subject").value.trim(),a=document.getElementById("message").value.trim(),r=document.getElementById("formStatus");if(!n||!o||!c||!a){r.textContent="Complete the required fields before sending";return}const d=[`Name: ${n}`,`Email: ${o}`,`Company: ${i||"-"}`,"",a],m=`mailto:rfq@wmaseng.co.uk?subject=${encodeURIComponent(c)}&body=${encodeURIComponent(d.join("\\n"))}`;window.location.href=m;r.textContent="Your email client should open with the enquiry prepared";e.reset()})}})
+document.addEventListener("DOMContentLoaded", function () {
+  const navToggle = document.querySelector("[data-nav-toggle]");
+  const mainNav = document.querySelector(".main-nav");
+
+  if (navToggle && mainNav) {
+    navToggle.addEventListener("click", function () {
+      mainNav.classList.toggle("open");
+    });
+  }
+
+  const contactForm = document.getElementById("contactForm");
+
+  if (contactForm) {
+    contactForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      const name = document.getElementById("name")?.value.trim() || "";
+      const email = document.getElementById("email")?.value.trim() || "";
+      const company = document.getElementById("company")?.value.trim() || "";
+      const subject = document.getElementById("subject")?.value.trim() || "";
+      const message = document.getElementById("message")?.value.trim() || "";
+      const formStatus = document.getElementById("formStatus");
+
+      if (!name || !email || !subject || !message) {
+        if (formStatus) {
+          formStatus.textContent = "Complete the required fields before sending";
+        }
+        return;
+      }
+
+      const bodyLines = [
+        `Name: ${name}`,
+        `Email: ${email}`,
+        `Company: ${company || "-"}`,
+        "",
+        message
+      ];
+
+      const mailtoUrl =
+        `mailto:rfq@wmaseng.co.uk?subject=${encodeURIComponent(subject)}` +
+        `&body=${encodeURIComponent(bodyLines.join("\n"))}`;
+
+      window.location.href = mailtoUrl;
+
+      if (formStatus) {
+        formStatus.textContent = "Your email client should open with the enquiry prepared";
+      }
+
+      contactForm.reset();
+    });
+  }
+});
