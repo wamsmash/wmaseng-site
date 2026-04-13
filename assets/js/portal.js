@@ -565,12 +565,20 @@
       return false;
     }
 
-    const safeFileName = file.name.replace(/\s+/g, "_");
-    const companyFolder =
-      profile.role === "admin"
-        ? (portalState.adminTargetCompany?.slug || "test-company")
-        : "test-company";
-    const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
+const safeFileName = file.name.replace(/\s+/g, "_");
+const companyFolder =
+  profile.role === "admin"
+    ? portalState.adminTargetCompany?.slug
+    : profile.company_slug;
+
+if (!companyFolder) {
+  if (statusEl) {
+    statusEl.textContent = "Unable to determine company storage folder";
+  }
+  return false;
+}
+
+const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
 
     statusEl.textContent = "Uploading purchase order";
 
@@ -856,12 +864,20 @@
       .select("id")
       .single();
 
-    if (requestError || !requestRow) {
-      statusEl.textContent = requestError?.message || "Unable to create quote request";
-      return;
-    }
+if (requestError || !requestRow) {
+  statusEl.textContent = requestError?.message || "Unable to create quote request";
+  return;
+}
 
-    const companyFolder = "test-company";
+const quoteRequestId = requestRow.id;
+const companyFolder = portalState.profile.company_slug;
+const uploadedPaths = [];
+const insertedFileIds = [];
+
+if (!companyFolder) {
+  statusEl.textContent = "Unable to determine company storage folder";
+  return;
+}
 
     for (const file of files) {
       const safeFileName = file.name.replace(/\s+/g, "_");
@@ -873,27 +889,71 @@
           upsert: true
         });
 
-      if (uploadResult.error) {
-        statusEl.textContent = uploadResult.error.message || "A file upload failed";
-        return;
-      }
+if (uploadResult.error) {
+  if (insertedFileIds.length) {
+    await supabaseClient
+      .from("wmas_quote_request_files")
+      .delete()
+      .in("id", insertedFileIds);
+  }
 
-      const fileInsert = await supabaseClient
-        .from("wmas_quote_request_files")
-        .insert({
-          quote_request_id: requestRow.id,
-          company_id: portalState.profile.company_id,
-          title: file.name,
-          file_name: file.name,
-          storage_path: objectPath,
-          file_type: file.type || "application/octet-stream",
-          uploaded_by: portalState.profile.id
-        });
+  if (uploadedPaths.length) {
+    await supabaseClient.storage
+      .from("wmas-quote-request-files")
+      .remove(uploadedPaths);
+  }
 
-      if (fileInsert.error) {
-        statusEl.textContent = fileInsert.error.message || "Unable to register an uploaded file";
-        return;
-      }
+  await supabaseClient
+    .from("wmas_quote_requests")
+    .delete()
+    .eq("id", quoteRequestId);
+
+  statusEl.textContent = uploadResult.error.message || "A file upload failed";
+  return;
+}
+
+uploadedPaths.push(objectPath);
+
+      
+const fileInsert = await supabaseClient
+  .from("wmas_quote_request_files")
+  .insert({
+    quote_request_id: requestRow.id,
+    company_id: portalState.profile.company_id,
+    title: file.name,
+    file_name: file.name,
+    storage_path: objectPath,
+    file_type: file.type || "application/octet-stream",
+    uploaded_by: portalState.profile.id
+  })
+  .select("id")
+  .single();
+      
+
+if (fileInsert.error) {
+  if (uploadedPaths.length) {
+    await supabaseClient.storage
+      .from("wmas-quote-request-files")
+      .remove(uploadedPaths);
+  }
+
+  if (insertedFileIds.length) {
+    await supabaseClient
+      .from("wmas_quote_request_files")
+      .delete()
+      .in("id", insertedFileIds);
+  }
+
+  await supabaseClient
+    .from("wmas_quote_requests")
+    .delete()
+    .eq("id", quoteRequestId);
+
+  statusEl.textContent = fileInsert.error.message || "Unable to register an uploaded file";
+  return;
+}
+
+insertedFileIds.push(fileInsert.data.id);
     }
 
     titleEl.value = "";
@@ -977,21 +1037,40 @@
       return;
     }
 
-    const userId = session.user.id;
 
-    const { data: profile, error } = await supabaseClient
-      .from("wmas_profiles")
-      .select("id, full_name, email, role, company_id, is_active")
-      .eq("id", userId)
-      .single();
+const userId = session.user.id;
 
-    if (error || !profile || profile.is_active !== true) {
-      await supabaseClient.auth.signOut();
-      window.location.href = "client-login.html";
-      return;
-    }
+const { data: profile, error } = await supabaseClient
+  .from("wmas_profiles")
+  .select("id, full_name, email, role, company_id, is_active")
+  .eq("id", userId)
+  .single();
 
-    portalState.profile = profile;
+if (error || !profile || profile.is_active !== true) {
+  await supabaseClient.auth.signOut();
+  window.location.href = "client-login.html";
+  return;
+}
+
+let companySlug = null;
+let companyName = null;
+
+if (profile.company_id) {
+  const { data: companyRow } = await supabaseClient
+    .from("wmas_companies")
+    .select("name, slug")
+    .eq("id", profile.company_id)
+    .single();
+
+  companySlug = companyRow?.slug || null;
+  companyName = companyRow?.name || null;
+}
+
+portalState.profile = {
+  ...profile,
+  company_slug: companySlug,
+  company_name: companyName
+};
 
     if (profile.role === "admin") {
       if (adminPanelWrap) {
@@ -1013,12 +1092,12 @@
     await reloadPortalData();
     await handleAdminCreateJob();
 
-    const sendPortalMessageBtn = document.getElementById("sendPortalMessageBtn");
-    if (sendPortalMessageBtn) {
-      sendPortalMessageBtn.onclick = async function () {
-        await sendMessage(profile);
-      };
-    }
+const sendPortalMessageBtn = document.getElementById("sendPortalMessageBtn");
+if (sendPortalMessageBtn) {
+  sendPortalMessageBtn.onclick = async function () {
+    await sendMessage(portalState.profile);
+  };
+}
 
     const submitQuoteRequestBtn = document.getElementById("submitQuoteRequestBtn");
     if (submitQuoteRequestBtn) {
