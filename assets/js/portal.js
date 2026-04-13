@@ -86,28 +86,28 @@
     `;
   }
 
-  function getJobStatusMeta(status) {
-    switch (status) {
-        case "rfq_submitted":
-        return { label: "RFQ submitted", bg: "rgba(124,136,155,.12)", border: "rgba(124,136,155,.28)", color: "#d7dee5" };
-      return { label: "Reviewing / Estimating",
-        return { label: "Estimating", bg: "rgba(208,165,47,.14)", border: "rgba(208,165,47,.34)", color: "#f0c75a" };
-      case "quoted":
-        return { label: "Quoted", bg: "rgba(214,135,52,.14)", border: "rgba(214,135,52,.34)", color: "#f0a85a" };
-      case "awaiting_po":
-        return { label: "Awaiting PO", bg: "rgba(214,135,52,.14)", border: "rgba(214,135,52,.34)", color: "#f0a85a" };
-      case "designing":
-        return { label: "Designing", bg: "rgba(65,145,255,.14)", border: "rgba(65,145,255,.34)", color: "#79b2ff" };
-      case "awaiting_approval":
-        return { label: "Awaiting approval", bg: "rgba(160,110,255,.14)", border: "rgba(160,110,255,.34)", color: "#b798ff" };
-      case "drafting_pack":
-        return { label: "Drafting pack", bg: "rgba(65,145,255,.14)", border: "rgba(65,145,255,.34)", color: "#79b2ff" };
-      case "complete":
-        return { label: "Completed", bg: "rgba(108,186,92,.14)", border: "rgba(108,186,92,.34)", color: "#8fda7d" };
-      default:
-        return { label: status || "Unknown", bg: "rgba(170,170,170,.10)", border: "rgba(170,170,170,.24)", color: "#d7dee5" };
-    }
+function getJobStatusMeta(status) {
+  switch (status) {
+    case "rfq_submitted":
+      return { label: "RFQ submitted", bg: "rgba(124,136,155,.12)", border: "rgba(124,136,155,.28)", color: "#d7dee5" };
+    case "estimating":
+      return { label: "Estimating", bg: "rgba(208,165,47,.14)", border: "rgba(208,165,47,.34)", color: "#f0c75a" };
+    case "quoted":
+      return { label: "Quoted", bg: "rgba(214,135,52,.14)", border: "rgba(214,135,52,.34)", color: "#f0a85a" };
+    case "awaiting_po":
+      return { label: "Awaiting PO", bg: "rgba(214,135,52,.14)", border: "rgba(214,135,52,.34)", color: "#f0a85a" };
+    case "designing":
+      return { label: "Designing", bg: "rgba(65,145,255,.14)", border: "rgba(65,145,255,.34)", color: "#79b2ff" };
+    case "awaiting_approval":
+      return { label: "Awaiting approval", bg: "rgba(160,110,255,.14)", border: "rgba(160,110,255,.34)", color: "#b798ff" };
+    case "drafting_pack":
+      return { label: "Drafting pack", bg: "rgba(65,145,255,.14)", border: "rgba(65,145,255,.34)", color: "#79b2ff" };
+    case "complete":
+      return { label: "Completed", bg: "rgba(108,186,92,.14)", border: "rgba(108,186,92,.34)", color: "#8fda7d" };
+    default:
+      return { label: status || "Unknown", bg: "rgba(170,170,170,.10)", border: "rgba(170,170,170,.24)", color: "#d7dee5" };
   }
+}
 
   function getFileTypeLabel(file) {
     const name = (file.file_name || "").toLowerCase();
