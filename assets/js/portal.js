@@ -19,6 +19,7 @@
     messages: [],
     showAllFiles: false,
     searchTerm: "",
+    adminCompanies: [],
     adminTargetCompany: null
   };
 
@@ -477,12 +478,17 @@
       return;
     }
 
+    const targetCompanyId =
+      profile.role === "admin"
+        ? portalState.adminTargetCompany?.id || profile.company_id
+        : profile.company_id;
+
     statusEl.textContent = "Sending message";
 
     const { error } = await supabaseClient
       .from("wmas_messages")
       .insert({
-        company_id: profile.company_id,
+        company_id: targetCompanyId,
         sender_profile_id: profile.id,
         sender_role: profile.role,
         subject: subject || "Portal message",
@@ -498,7 +504,7 @@
     subjectEl.value = "";
     bodyEl.value = "";
     statusEl.textContent = "Message sent";
-    await loadMessages(profile.company_id);
+    await loadMessages(targetCompanyId);
   }
 
   async function insertJobEvent(job, eventType, eventLabel, eventNotes, userId) {
@@ -560,7 +566,10 @@
     }
 
     const safeFileName = file.name.replace(/\s+/g, "_");
-    const companyFolder = portalState.adminTargetCompany?.slug || "test-company";
+    const companyFolder =
+      portalState.profile.role === "admin"
+        ? (portalState.adminTargetCompany?.slug || "test-company")
+        : "test-company";
     const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
 
     if (statusEl) {
@@ -699,16 +708,58 @@
     statusEl.textContent = "No current action for this job";
   }
 
-  async function fetchAdminTargetCompany() {
-    const { data } = await supabaseClient
+  async function loadAdminCompanies() {
+    const selectEl = document.getElementById("adminCompanySelect");
+    if (!selectEl) {
+      return;
+    }
+
+    const { data, error } = await supabaseClient
       .from("wmas_companies")
       .select("id, name, slug")
       .neq("slug", "wmas-engineering")
       .eq("is_active", true)
-      .order("created_at", { ascending: true })
-      .limit(1);
+      .order("name", { ascending: true });
 
-    portalState.adminTargetCompany = data && data.length ? data[0] : null;
+    if (error) {
+      selectEl.innerHTML = `<option value="">Unable to load client companies</option>`;
+      portalState.adminCompanies = [];
+      portalState.adminTargetCompany = null;
+      return;
+    }
+
+    portalState.adminCompanies = data || [];
+
+    if (!portalState.adminCompanies.length) {
+      selectEl.innerHTML = `<option value="">No client companies available</option>`;
+      portalState.adminTargetCompany = null;
+      return;
+    }
+
+    selectEl.innerHTML = portalState.adminCompanies
+      .map(function (company) {
+        return `<option value="${company.id}">${company.name}</option>`;
+      })
+      .join("");
+
+    portalState.adminTargetCompany = portalState.adminCompanies[0];
+
+    selectEl.value = portalState.adminTargetCompany.id;
+
+    selectEl.onchange = async function () {
+      const selectedId = selectEl.value;
+      portalState.adminTargetCompany =
+        portalState.adminCompanies.find(function (company) {
+          return company.id === selectedId;
+        }) || null;
+
+      const subtextEl = document.getElementById("portalSubtext");
+      if (subtextEl && portalState.adminTargetCompany) {
+        subtextEl.textContent = `Admin access is active. Current target company: ${portalState.adminTargetCompany.name}`;
+      }
+
+      await reloadPortalData();
+    };
   }
 
   async function handleAdminCreateJob() {
@@ -737,7 +788,7 @@
       }
 
       if (!portalState.adminTargetCompany) {
-        notice.textContent = "No target client company found";
+        notice.textContent = "Select a client company first";
         return;
       }
 
@@ -845,10 +896,10 @@
     portalState.profile = profile;
 
     if (profile.role === "admin") {
-      await fetchAdminTargetCompany();
       if (adminPanelWrap) {
         adminPanelWrap.style.display = "grid";
       }
+      await loadAdminCompanies();
       if (portalState.adminTargetCompany) {
         subtextEl.textContent = `Admin access is active. Current target company: ${portalState.adminTargetCompany.name}`;
       } else {
