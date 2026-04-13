@@ -368,7 +368,7 @@ function renderMessages(messages) {
 async function loadJobs(companyId) {
   const { data: jobsData, error: jobsError } = await supabaseClient
     .from("wmas_jobs")
-    .select("id, company_id, quote_id, quote_request_id, job_ref, title, status, started_at")
+    .select("id, company_id, quote_id, job_ref, title, status, started_at")
     .eq("company_id", companyId)
     .order("started_at", { ascending: false });
 
@@ -386,13 +386,7 @@ async function loadJobs(companyId) {
     return [];
   }
 
-  const linkedRfqIds = new Set(
-    (jobsData || [])
-      .map(function (job) {
-        return job.quote_request_id;
-      })
-      .filter(Boolean)
-  );
+const linkedRfqIds = new Set();
 
   const rfqAsJobs = (rfqData || [])
     .filter(function (rfq) {
