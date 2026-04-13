@@ -44,21 +44,27 @@
 
   <section class="section">
     <div class="container">
-      <div class="section-head" style="max-width:900px">
-        <h2 id="portalWelcome">Loading portal</h2>
-        <p class="muted" id="portalSubtext">Checking your session and loading account access</p>
+<div class="split-panel" style="margin-bottom:16px;align-items:end">
+  <div>
+    <h2 id="portalWelcome" style="margin-bottom:10px">Loading portal</h2>
+    <p class="muted" id="portalSubtext" style="max-width:none;margin:0">
+      Checking your session and loading account access
+    </p>
 
-        <div class="form-group" style="margin-top:18px;max-width:620px">
-          <label for="portalSearchInput">Search portal</label>
-          <input id="portalSearchInput" type="text" placeholder="Search by project number, quote, PO, file name or title">
-        </div>
+    <div class="cta-row" style="margin-top:16px">
+      <button id="portalSignOut" class="btn" type="button">Sign Out</button>
+    </div>
+  </div>
 
-        <div id="portalSearchStatus" class="notice" style="margin-top:14px;max-width:620px">Showing all items</div>
+  <div>
+    <div class="form-group" style="margin-top:0">
+      <label for="portalSearchInput">Search portal</label>
+      <input id="portalSearchInput" type="text" placeholder="Search by project number, quote, PO, file name or title">
+    </div>
 
-        <div class="cta-row">
-          <button id="portalSignOut" class="btn" type="button">Sign Out</button>
-        </div>
-      </div>
+    <div id="portalSearchStatus" class="notice" style="margin-top:14px">Showing all items</div>
+  </div>
+</div>
 
       <div id="adminPanelWrap" class="split-panel" style="margin-bottom:16px;display:none">
         <div class="card" style="grid-column:1/-1">
