@@ -218,34 +218,36 @@
     }).join("");
   }
 
-  function renderMessages(messages) {
-    const el = document.getElementById("messagesCardContent");
-    if (!el) {
-      return;
-    }
-
-    if (!messages || messages.length === 0) {
-      el.innerHTML = "<p>No messages yet</p>";
-      return;
-    }
-
-    el.innerHTML = messages.map(function (message) {
-      const senderLabel = message.is_system
-        ? "System"
-        : (message.sender_role === "admin" ? "WMAS" : "Client");
-
-      return `
-        <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-            <div style="font-weight:700;color:#edf1f4">${message.subject || "Message"}</div>
-            <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
-          </div>
-          <div style="margin-top:8px;color:#d7dee5;line-height:1.6">${message.message_body}</div>
-          <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
-        </div>
-      `;
-    }).join("");
+function renderMessages(messages) {
+  const el = document.getElementById("messagesCardContent");
+  if (!el) {
+    return;
   }
+
+  if (!messages || messages.length === 0) {
+    el.innerHTML = "<p>No messages yet</p>";
+    return;
+  }
+
+  el.innerHTML = messages.map(function (message) {
+    const senderLabel = message.is_system
+      ? "System"
+      : (message.sender_role === "admin" ? "WMAS" : "Client");
+
+    const formattedBody = (message.message_body || "").replace(/\n/g, "<br>");
+
+    return `
+      <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-weight:700;color:#edf1f4">${message.subject || "Message"}</div>
+          <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
+        </div>
+        <div style="margin-top:8px;color:#d7dee5;line-height:1.7">${formattedBody}</div>
+        <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
+      </div>
+    `;
+  }).join("");
+}
 
   async function loadJobs(companyId) {
     const { data, error } = await supabaseClient
