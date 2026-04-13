@@ -90,7 +90,7 @@
     switch (status) {
         case "rfq_submitted":
         return { label: "RFQ submitted", bg: "rgba(124,136,155,.12)", border: "rgba(124,136,155,.28)", color: "#d7dee5" };
-      case "estimating":
+      return { label: "Reviewing / Estimating",
         return { label: "Estimating", bg: "rgba(208,165,47,.14)", border: "rgba(208,165,47,.34)", color: "#f0c75a" };
       case "quoted":
         return { label: "Quoted", bg: "rgba(214,135,52,.14)", border: "rgba(214,135,52,.34)", color: "#f0a85a" };
