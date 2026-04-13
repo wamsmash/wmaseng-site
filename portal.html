@@ -104,33 +104,38 @@
         </div>
       </div>
 
-<div class="split-panel" style="margin-top:16px">
-  <div class="card" style="grid-column:1/-1">
-        <div class="card">
+      <div class="split-panel" style="margin-top:16px">
+        <div class="card" style="grid-column:1/-1">
           <h3>Messages</h3>
-<div id="messagesCardContent" class="muted" style="max-height:260px;overflow:auto">Loading messages</div>
 
-<div style="margin-top:12px">
-  <div class="form-grid">
-    <div class="form-group">
-      <label for="portalMessageSubject">Subject</label>
-      <input id="portalMessageSubject" type="text" placeholder="Project query, approval note, install question">
-    </div>
+          <div class="form-grid" style="margin-top:14px;align-items:start">
+            <div class="form-group">
+              <label>Recent messages</label>
+              <div id="messagesCardContent" class="muted" style="max-height:320px;overflow:auto">Loading messages</div>
+            </div>
 
-    <div class="form-group full" style="margin-top:0">
-      <label for="portalMessageBody">Message</label>
-      <textarea id="portalMessageBody" placeholder="Write your message here" style="min-height:110px"></textarea>
-    </div>
-  </div>
+            <div>
+              <div class="form-group">
+                <label for="portalMessageSubject">Subject</label>
+                <input id="portalMessageSubject" type="text" placeholder="Project query, approval note, install question">
+              </div>
 
-  <div class="cta-row" style="margin-top:10px">
-    <button id="sendPortalMessageBtn" class="btn btn-primary" type="button">Send message</button>
-  </div>
+              <div class="form-group" style="margin-top:12px">
+                <label for="portalMessageBody">Message</label>
+                <textarea id="portalMessageBody" placeholder="Write your message here" style="min-height:140px"></textarea>
+              </div>
 
-  <div id="portalMessageStatus" class="notice" style="margin-top:12px">No new message</div>
-</div>
+              <div class="cta-row" style="margin-top:12px">
+                <button id="sendPortalMessageBtn" class="btn btn-primary" type="button">Send message</button>
+              </div>
+
+              <div id="portalMessageStatus" class="notice" style="margin-top:12px">No new message</div>
+            </div>
+          </div>
         </div>
+      </div>
 
+      <div class="split-panel" style="margin-top:16px">
         <div class="card">
           <h3>Request Quote</h3>
           <p class="muted">Send a new request with notes, preferred materials and reference files</p>
@@ -171,14 +176,14 @@
 
           <div id="quoteRequestStatus" class="notice" style="margin-top:14px">No quote request submitted yet</div>
         </div>
-      </div>
 
-      <div class="split-panel" style="margin-top:16px">
         <div class="card">
           <h3>Jobs</h3>
           <div id="jobsCardContent" class="muted">Loading jobs</div>
         </div>
+      </div>
 
+      <div class="split-panel" style="margin-top:16px">
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <h3 style="margin:0">Technical Files</h3>
@@ -186,16 +191,16 @@
           </div>
           <div id="filesCardContent" class="muted" style="margin-top:14px">Loading files</div>
         </div>
-      </div>
 
-      <div class="split-panel" style="margin-top:16px">
         <div class="card">
           <h3>Commercial</h3>
           <div id="commercialCardContent" class="muted">Loading commercial documents</div>
           <div id="commercialActionArea" style="margin-top:14px"></div>
           <div id="commercialActionStatus" class="notice" style="margin-top:14px">No current action</div>
         </div>
+      </div>
 
+      <div class="split-panel" style="margin-top:16px">
         <div class="card">
           <h3>Request Site Visit</h3>
           <p class="muted">Structured site visit requests will appear here</p>
