@@ -852,6 +852,8 @@ const uploadResult = await supabaseClient.storage
   started_at: new Date().toISOString()
 });
 
+
+      
       if (error) {
         notice.textContent = error.message || "Unable to create job";
         return;
@@ -1085,7 +1087,10 @@ await supabaseClient
           created_by: portalState.profile.id,
           started_at: new Date().toISOString()
         });
-
+await supabaseClient
+  .from("wmas_quote_requests")
+  .update({ status: "in_progress" })
+  .eq("id", rfq.id);
       await reloadPortalData();
     };
   });
