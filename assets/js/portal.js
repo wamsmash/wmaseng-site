@@ -18,7 +18,8 @@
     commercialFiles: [],
     messages: [],
     showAllFiles: false,
-    searchTerm: ""
+    searchTerm: "",
+    adminTargetCompany: null
   };
 
   async function handleLoginPage() {
@@ -86,23 +87,6 @@
         font-weight:700;
       ">${label}</span>
     `;
-  }
-
-  function getQuoteStatusMeta(status) {
-    switch (status) {
-      case "draft":
-        return { label: "Draft", bg: "rgba(170,170,170,.10)", border: "rgba(170,170,170,.24)", color: "#d7dee5" };
-      case "issued":
-        return { label: "Quoted", bg: "rgba(214,135,52,.14)", border: "rgba(214,135,52,.34)", color: "#f0a85a" };
-      case "accepted":
-        return { label: "Accepted", bg: "rgba(108,186,92,.14)", border: "rgba(108,186,92,.34)", color: "#8fda7d" };
-      case "expired":
-        return { label: "Expired", bg: "rgba(124,136,155,.14)", border: "rgba(124,136,155,.34)", color: "#c8d0db" };
-      case "withdrawn":
-        return { label: "Withdrawn", bg: "rgba(124,136,155,.14)", border: "rgba(124,136,155,.34)", color: "#c8d0db" };
-      default:
-        return { label: status || "Unknown", bg: "rgba(170,170,170,.10)", border: "rgba(170,170,170,.24)", color: "#d7dee5" };
-    }
   }
 
   function getJobStatusMeta(status) {
@@ -360,14 +344,6 @@
     }).join("");
   }
 
-  function rerenderPortal() {
-    updateSearchStatus();
-    renderJobs(portalState.jobs);
-    renderFiles(portalState.technicalFiles);
-    renderCommercial(portalState.commercialFiles);
-    renderMessages(portalState.messages);
-  }
-
   async function loadJobs(companyId) {
     const { data, error } = await supabaseClient
       .from("wmas_jobs")
@@ -584,7 +560,8 @@
     }
 
     const safeFileName = file.name.replace(/\s+/g, "_");
-    const objectPath = `${profile.company_id}/${job.job_ref}_${safeFileName}`;
+    const companyFolder = portalState.adminTargetCompany?.slug || "test-company";
+    const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
 
     if (statusEl) {
       statusEl.textContent = "Uploading purchase order";
@@ -722,6 +699,76 @@
     statusEl.textContent = "No current action for this job";
   }
 
+  async function fetchAdminTargetCompany() {
+    const { data } = await supabaseClient
+      .from("wmas_companies")
+      .select("id, name, slug")
+      .neq("slug", "wmas-engineering")
+      .eq("is_active", true)
+      .order("created_at", { ascending: true })
+      .limit(1);
+
+    portalState.adminTargetCompany = data && data.length ? data[0] : null;
+  }
+
+  async function handleAdminCreateJob() {
+    const btn = document.getElementById("adminCreateJobBtn");
+    const notice = document.getElementById("adminJobStatusNotice");
+    const refEl = document.getElementById("adminJobRef");
+    const titleEl = document.getElementById("adminJobTitle");
+    const statusEl = document.getElementById("adminJobStatus");
+
+    if (!btn || !notice || !refEl || !titleEl || !statusEl) {
+      return;
+    }
+
+    if (!portalState.profile || portalState.profile.role !== "admin") {
+      return;
+    }
+
+    btn.onclick = async function () {
+      const jobRef = refEl.value.trim();
+      const title = titleEl.value.trim();
+      const status = statusEl.value;
+
+      if (!jobRef || !title) {
+        notice.textContent = "Enter a job reference and job title";
+        return;
+      }
+
+      if (!portalState.adminTargetCompany) {
+        notice.textContent = "No target client company found";
+        return;
+      }
+
+      notice.textContent = "Creating job";
+
+      const { error } = await supabaseClient
+        .from("wmas_jobs")
+        .insert({
+          company_id: portalState.adminTargetCompany.id,
+          job_ref: jobRef,
+          title: title,
+          description: "Portal created job",
+          status: status,
+          created_by: portalState.profile.id,
+          started_at: new Date().toISOString()
+        });
+
+      if (error) {
+        notice.textContent = error.message || "Unable to create job";
+        return;
+      }
+
+      notice.textContent = `Job created for ${portalState.adminTargetCompany.name}`;
+      refEl.value = "";
+      titleEl.value = "";
+      statusEl.value = "quoted";
+
+      await reloadPortalData();
+    };
+  }
+
   function bindSearch() {
     const input = document.getElementById("portalSearchInput");
     if (!input) {
@@ -730,14 +777,43 @@
 
     input.addEventListener("input", function () {
       portalState.searchTerm = input.value || "";
-      rerenderPortal();
+      updateSearchStatus();
+      renderJobs(portalState.jobs);
+      renderFiles(portalState.technicalFiles);
+      renderCommercial(portalState.commercialFiles);
+      renderMessages(portalState.messages);
     });
+  }
+
+  async function reloadPortalData() {
+    if (!portalState.profile) {
+      return;
+    }
+
+    const companyId =
+      portalState.profile.role === "admin"
+        ? portalState.adminTargetCompany?.id || portalState.profile.company_id
+        : portalState.profile.company_id;
+
+    const jobs = await loadJobs(companyId);
+    await loadFiles(companyId);
+    await loadCommercial(companyId);
+    await loadMessages(companyId);
+    updateSearchStatus();
+
+    const activeCommercialJob =
+      jobs.find(function (job) {
+        return job.status === "quoted" || job.status === "awaiting_po";
+      }) || null;
+
+    renderCommercialActions(activeCommercialJob, portalState.profile, reloadPortalData);
   }
 
   async function handlePortalPage() {
     const welcomeEl = document.getElementById("portalWelcome");
     const subtextEl = document.getElementById("portalSubtext");
     const signOutBtn = document.getElementById("portalSignOut");
+    const adminPanelWrap = document.getElementById("adminPanelWrap");
 
     if (!welcomeEl || !subtextEl) {
       return;
@@ -768,30 +844,25 @@
 
     portalState.profile = profile;
 
-    welcomeEl.textContent = `Welcome, ${profile.full_name || "Client"}`;
-    subtextEl.textContent =
-      profile.role === "admin"
-        ? "Admin access is active. Portal modules can now be built onto this shell"
-        : "Client access is active. Your projects, files and messages are ready below";
-
-    bindSearch();
-
-    async function reloadPortalData() {
-      const jobs = await loadJobs(profile.company_id);
-      await loadFiles(profile.company_id);
-      await loadCommercial(profile.company_id);
-      await loadMessages(profile.company_id);
-      updateSearchStatus();
-
-      const activeCommercialJob =
-        jobs.find(function (job) {
-          return job.status === "quoted" || job.status === "awaiting_po";
-        }) || null;
-
-      renderCommercialActions(activeCommercialJob, profile, reloadPortalData);
+    if (profile.role === "admin") {
+      await fetchAdminTargetCompany();
+      if (adminPanelWrap) {
+        adminPanelWrap.style.display = "grid";
+      }
+      if (portalState.adminTargetCompany) {
+        subtextEl.textContent = `Admin access is active. Current target company: ${portalState.adminTargetCompany.name}`;
+      } else {
+        subtextEl.textContent = "Admin access is active. No client company is currently available";
+      }
+    } else {
+      subtextEl.textContent = "Client access is active. Your projects, files and messages are ready below";
     }
 
+    welcomeEl.textContent = `Welcome, ${profile.full_name || "Client"}`;
+
+    bindSearch();
     await reloadPortalData();
+    await handleAdminCreateJob();
 
     const sendPortalMessageBtn = document.getElementById("sendPortalMessageBtn");
     if (sendPortalMessageBtn) {
