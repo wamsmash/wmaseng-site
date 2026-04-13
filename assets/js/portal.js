@@ -53,9 +53,7 @@
         return;
       }
 
-      if (loginStatus) {
-        loginStatus.textContent = "Signing in";
-      }
+      loginStatus.textContent = "Signing in";
 
       const { error } = await supabaseClient.auth.signInWithPassword({
         email,
@@ -63,9 +61,7 @@
       });
 
       if (error) {
-        if (loginStatus) {
-          loginStatus.textContent = error.message || "Unable to sign in";
-        }
+        loginStatus.textContent = error.message || "Unable to sign in";
         return;
       }
 
@@ -106,10 +102,6 @@
         return { label: "Drafting pack", bg: "rgba(65,145,255,.14)", border: "rgba(65,145,255,.34)", color: "#79b2ff" };
       case "complete":
         return { label: "Completed", bg: "rgba(108,186,92,.14)", border: "rgba(108,186,92,.34)", color: "#8fda7d" };
-      case "issued":
-        return { label: "Issued", bg: "rgba(124,136,155,.14)", border: "rgba(124,136,155,.34)", color: "#c8d0db" };
-      case "in_progress":
-        return { label: "In progress", bg: "rgba(65,145,255,.14)", border: "rgba(65,145,255,.34)", color: "#79b2ff" };
       default:
         return { label: status || "Unknown", bg: "rgba(170,170,170,.10)", border: "rgba(170,170,170,.24)", color: "#d7dee5" };
     }
@@ -117,10 +109,14 @@
 
   function getFileTypeLabel(file) {
     const name = (file.file_name || "").toLowerCase();
+
     if (name.endsWith(".pdf")) return "PDF";
     if (name.endsWith(".zip")) return "ZIP";
     if (name.endsWith(".dwg")) return "DWG";
     if (name.endsWith(".dxf")) return "DXF";
+    if (name.endsWith(".step") || name.endsWith(".stp")) return "STEP";
+    if (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp")) return "Image";
+
     return "File";
   }
 
@@ -141,6 +137,7 @@
 
   function sortBySearchMatch(items, fields) {
     const term = normaliseSearchText(portalState.searchTerm);
+
     if (!term) {
       return items.slice();
     }
@@ -165,9 +162,7 @@
       return;
     }
 
-    const term = normaliseSearchText(portalState.searchTerm);
-
-    if (!term) {
+    if (!normaliseSearchText(portalState.searchTerm)) {
       statusEl.textContent = "Showing all items";
       return;
     }
@@ -182,7 +177,7 @@
     }
 
     if (!jobs || jobs.length === 0) {
-      el.innerHTML = "<p>No live jobs available yet</p>";
+      el.innerHTML = "<p>No jobs available yet</p>";
       return;
     }
 
@@ -200,6 +195,10 @@
 
     el.innerHTML = visibleJobs.map(function (job) {
       const status = getJobStatusMeta(job.status);
+      const timestampLabel = job.started_at
+        ? new Date(job.started_at).toLocaleString()
+        : "";
+
       return `
         <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
           <div style="font-weight:700;color:#edf1f4">${job.job_ref}</div>
@@ -207,6 +206,7 @@
           <div style="margin-top:10px">
             ${badgeHtml(status.label, status.border, status.bg, status.color)}
           </div>
+          ${timestampLabel ? `<div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${timestampLabel}</div>` : ""}
         </div>
       `;
     }).join("");
@@ -567,14 +567,12 @@
 
     const safeFileName = file.name.replace(/\s+/g, "_");
     const companyFolder =
-      portalState.profile.role === "admin"
+      profile.role === "admin"
         ? (portalState.adminTargetCompany?.slug || "test-company")
         : "test-company";
     const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
 
-    if (statusEl) {
-      statusEl.textContent = "Uploading purchase order";
-    }
+    statusEl.textContent = "Uploading purchase order";
 
     const uploadResult = await supabaseClient.storage
       .from("wmas-commercial-files")
@@ -583,9 +581,7 @@
       });
 
     if (uploadResult.error) {
-      if (statusEl) {
-        statusEl.textContent = uploadResult.error.message || "Unable to upload purchase order";
-      }
+      statusEl.textContent = uploadResult.error.message || "Unable to upload purchase order";
       return false;
     }
 
@@ -608,9 +604,7 @@
       });
 
     if (insertResult.error) {
-      if (statusEl) {
-        statusEl.textContent = insertResult.error.message || "Unable to register purchase order";
-      }
+      statusEl.textContent = insertResult.error.message || "Unable to register purchase order";
       return false;
     }
 
@@ -624,9 +618,7 @@
       .eq("id", job.id);
 
     if (updateResult.error) {
-      if (statusEl) {
-        statusEl.textContent = updateResult.error.message || "Unable to update job after PO upload";
-      }
+      statusEl.textContent = updateResult.error.message || "Unable to update job after PO upload";
       return false;
     }
 
@@ -638,10 +630,7 @@
       profile.id
     );
 
-    if (statusEl) {
-      statusEl.textContent = "Congratulations, your order is in progress";
-    }
-
+    statusEl.textContent = "Congratulations, your order is in progress";
     return true;
   }
 
@@ -743,7 +732,6 @@
       .join("");
 
     portalState.adminTargetCompany = portalState.adminCompanies[0];
-
     selectEl.value = portalState.adminTargetCompany.id;
 
     selectEl.onchange = async function () {
@@ -818,6 +806,116 @@
 
       await reloadPortalData();
     };
+  }
+
+  async function submitQuoteRequest() {
+    const statusEl = document.getElementById("quoteRequestStatus");
+    const titleEl = document.getElementById("quoteRequestTitle");
+    const descriptionEl = document.getElementById("quoteRequestDescription");
+    const materialsEl = document.getElementById("quoteRequestMaterials");
+    const priorityEl = document.getElementById("quoteRequestPriority");
+    const filesEl = document.getElementById("quoteRequestFiles");
+
+    if (!statusEl || !titleEl || !descriptionEl || !materialsEl || !priorityEl || !filesEl) {
+      return;
+    }
+
+    if (!portalState.profile || portalState.profile.role !== "client") {
+      statusEl.textContent = "Quote requests are currently client actions only";
+      return;
+    }
+
+    const title = titleEl.value.trim();
+    const description = descriptionEl.value.trim();
+    const preferredMaterials = materialsEl.value.trim();
+    const priority = priorityEl.value;
+    const files = Array.from(filesEl.files || []);
+
+    if (!title) {
+      statusEl.textContent = "Enter a project title";
+      return;
+    }
+
+    statusEl.textContent = "Submitting quote request";
+
+    const requestRef = `QR-${Date.now()}`;
+
+    const { data: requestRow, error: requestError } = await supabaseClient
+      .from("wmas_quote_requests")
+      .insert({
+        company_id: portalState.profile.company_id,
+        requester_profile_id: portalState.profile.id,
+        request_ref: requestRef,
+        title: title,
+        description: description,
+        preferred_materials: preferredMaterials,
+        priority: priority,
+        status: "new",
+        admin_alert: true
+      })
+      .select("id")
+      .single();
+
+    if (requestError || !requestRow) {
+      statusEl.textContent = requestError?.message || "Unable to create quote request";
+      return;
+    }
+
+    const companyFolder = "test-company";
+
+    for (const file of files) {
+      const safeFileName = file.name.replace(/\s+/g, "_");
+      const objectPath = `${companyFolder}/${requestRef}_${safeFileName}`;
+
+      const uploadResult = await supabaseClient.storage
+        .from("wmas-quote-request-files")
+        .upload(objectPath, file, {
+          upsert: true
+        });
+
+      if (uploadResult.error) {
+        statusEl.textContent = uploadResult.error.message || "A file upload failed";
+        return;
+      }
+
+      const fileInsert = await supabaseClient
+        .from("wmas_quote_request_files")
+        .insert({
+          quote_request_id: requestRow.id,
+          company_id: portalState.profile.company_id,
+          title: file.name,
+          file_name: file.name,
+          storage_path: objectPath,
+          file_type: file.type || "application/octet-stream",
+          uploaded_by: portalState.profile.id
+        });
+
+      if (fileInsert.error) {
+        statusEl.textContent = fileInsert.error.message || "Unable to register an uploaded file";
+        return;
+      }
+    }
+
+    titleEl.value = "";
+    descriptionEl.value = "";
+    materialsEl.value = "";
+    priorityEl.value = "normal";
+    filesEl.value = "";
+
+    statusEl.textContent = `Quote request submitted: ${requestRef}`;
+
+    await supabaseClient
+      .from("wmas_messages")
+      .insert({
+        company_id: portalState.profile.company_id,
+        sender_profile_id: portalState.profile.id,
+        sender_role: "client",
+        subject: `Quote request submitted: ${requestRef}`,
+        message_body: `A new quote request has been submitted.\n\nTitle: ${title}\nPriority: ${priority}${preferredMaterials ? `\nPreferred materials: ${preferredMaterials}` : ""}`,
+        is_system: false
+      });
+
+    await loadMessages(portalState.profile.company_id);
   }
 
   function bindSearch() {
@@ -919,6 +1017,13 @@
     if (sendPortalMessageBtn) {
       sendPortalMessageBtn.onclick = async function () {
         await sendMessage(profile);
+      };
+    }
+
+    const submitQuoteRequestBtn = document.getElementById("submitQuoteRequestBtn");
+    if (submitQuoteRequestBtn) {
+      submitQuoteRequestBtn.onclick = async function () {
+        await submitQuoteRequest();
       };
     }
 
