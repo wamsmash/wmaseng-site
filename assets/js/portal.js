@@ -11,6 +11,16 @@
     SUPABASE_ANON_KEY
   );
 
+  let portalState = {
+    profile: null,
+    jobs: [],
+    technicalFiles: [],
+    commercialFiles: [],
+    messages: [],
+    showAllFiles: false,
+    searchTerm: ""
+  };
+
   async function handleLoginPage() {
     const loginForm = document.getElementById("clientLoginForm");
     const loginStatus = document.getElementById("loginStatus");
@@ -129,6 +139,57 @@
     return "File";
   }
 
+  function normaliseSearchText(value) {
+    return String(value || "").toLowerCase().trim();
+  }
+
+  function itemMatchesSearch(item, fields) {
+    const term = normaliseSearchText(portalState.searchTerm);
+    if (!term) {
+      return true;
+    }
+
+    return fields.some(function (field) {
+      return normaliseSearchText(item[field]).includes(term);
+    });
+  }
+
+  function sortBySearchMatch(items, fields) {
+    const term = normaliseSearchText(portalState.searchTerm);
+    if (!term) {
+      return items.slice();
+    }
+
+    const matched = [];
+    const unmatched = [];
+
+    items.forEach(function (item) {
+      if (itemMatchesSearch(item, fields)) {
+        matched.push(item);
+      } else {
+        unmatched.push(item);
+      }
+    });
+
+    return matched.concat(unmatched);
+  }
+
+  function updateSearchStatus() {
+    const statusEl = document.getElementById("portalSearchStatus");
+    if (!statusEl) {
+      return;
+    }
+
+    const term = normaliseSearchText(portalState.searchTerm);
+
+    if (!term) {
+      statusEl.textContent = "Showing all items";
+      return;
+    }
+
+    statusEl.textContent = `Search active: ${portalState.searchTerm}`;
+  }
+
   function renderJobs(jobs) {
     const el = document.getElementById("jobsCardContent");
     if (!el) {
@@ -140,7 +201,19 @@
       return;
     }
 
-    el.innerHTML = jobs.map(function (job) {
+    const sortedJobs = sortBySearchMatch(jobs, ["job_ref", "title", "status"]);
+    const visibleJobs = portalState.searchTerm
+      ? sortedJobs.filter(function (job) {
+          return itemMatchesSearch(job, ["job_ref", "title", "status"]);
+        })
+      : sortedJobs;
+
+    if (visibleJobs.length === 0) {
+      el.innerHTML = "<p>No matching jobs</p>";
+      return;
+    }
+
+    el.innerHTML = visibleJobs.map(function (job) {
       const status = getJobStatusMeta(job.status);
       return `
         <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
@@ -154,7 +227,7 @@
     }).join("");
   }
 
-  function renderFiles(files, showAll) {
+  function renderFiles(files) {
     const el = document.getElementById("filesCardContent");
     if (!el) {
       return;
@@ -165,7 +238,21 @@
       return;
     }
 
-    const visibleFiles = showAll ? files : files.slice(0, 6);
+    const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "revision"]);
+    const matchingFiles = portalState.searchTerm
+      ? sortedFiles.filter(function (file) {
+          return itemMatchesSearch(file, ["title", "file_name", "revision"]);
+        })
+      : sortedFiles;
+
+    const visibleFiles = portalState.showAllFiles
+      ? matchingFiles
+      : matchingFiles.slice(0, 6);
+
+    if (visibleFiles.length === 0) {
+      el.innerHTML = "<p>No matching technical files</p>";
+      return;
+    }
 
     el.innerHTML = visibleFiles.map(function (file) {
       const typeLabel = getFileTypeLabel(file);
@@ -198,7 +285,19 @@
       return;
     }
 
-    el.innerHTML = files.map(function (file) {
+    const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "document_kind"]);
+    const visibleFiles = portalState.searchTerm
+      ? sortedFiles.filter(function (file) {
+          return itemMatchesSearch(file, ["title", "file_name", "document_kind"]);
+        })
+      : sortedFiles;
+
+    if (visibleFiles.length === 0) {
+      el.innerHTML = "<p>No matching commercial documents</p>";
+      return;
+    }
+
+    el.innerHTML = visibleFiles.map(function (file) {
       const kindLabel = (file.document_kind || "document").toUpperCase();
       const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
 
@@ -218,36 +317,56 @@
     }).join("");
   }
 
-function renderMessages(messages) {
-  const el = document.getElementById("messagesCardContent");
-  if (!el) {
-    return;
-  }
+  function renderMessages(messages) {
+    const el = document.getElementById("messagesCardContent");
+    if (!el) {
+      return;
+    }
 
-  if (!messages || messages.length === 0) {
-    el.innerHTML = "<p>No messages yet</p>";
-    return;
-  }
+    if (!messages || messages.length === 0) {
+      el.innerHTML = "<p>No messages yet</p>";
+      return;
+    }
 
-  el.innerHTML = messages.map(function (message) {
-    const senderLabel = message.is_system
-      ? "System"
-      : (message.sender_role === "admin" ? "WMAS" : "Client");
+    const sortedMessages = sortBySearchMatch(messages, ["subject", "message_body", "sender_role"]);
+    const visibleMessages = portalState.searchTerm
+      ? sortedMessages.filter(function (message) {
+          return itemMatchesSearch(message, ["subject", "message_body", "sender_role"]);
+        })
+      : sortedMessages;
 
-    const formattedBody = (message.message_body || "").replace(/\n/g, "<br>");
+    if (visibleMessages.length === 0) {
+      el.innerHTML = "<p>No matching messages</p>";
+      return;
+    }
 
-    return `
-      <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div style="font-weight:700;color:#edf1f4">${message.subject || "Message"}</div>
-          <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
+    el.innerHTML = visibleMessages.map(function (message) {
+      const senderLabel = message.is_system
+        ? "System"
+        : (message.sender_role === "admin" ? "WMAS" : "Client");
+
+      const formattedBody = (message.message_body || "").replace(/\n/g, "<br>");
+
+      return `
+        <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="font-weight:700;color:#edf1f4">${message.subject || "Message"}</div>
+            <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
+          </div>
+          <div style="margin-top:8px;color:#d7dee5;line-height:1.7">${formattedBody}</div>
+          <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
         </div>
-        <div style="margin-top:8px;color:#d7dee5;line-height:1.7">${formattedBody}</div>
-        <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
-      </div>
-    `;
-  }).join("");
-}
+      `;
+    }).join("");
+  }
+
+  function rerenderPortal() {
+    updateSearchStatus();
+    renderJobs(portalState.jobs);
+    renderFiles(portalState.technicalFiles);
+    renderCommercial(portalState.commercialFiles);
+    renderMessages(portalState.messages);
+  }
 
   async function loadJobs(companyId) {
     const { data, error } = await supabaseClient
@@ -264,8 +383,9 @@ function renderMessages(messages) {
       return [];
     }
 
-    renderJobs(data || []);
-    return data || [];
+    portalState.jobs = data || [];
+    renderJobs(portalState.jobs);
+    return portalState.jobs;
   }
 
   async function loadFiles(companyId) {
@@ -297,15 +417,15 @@ function renderMessages(messages) {
       })
     );
 
-    let showAll = false;
-    renderFiles(filesWithUrls, showAll);
+    portalState.technicalFiles = filesWithUrls;
+    renderFiles(portalState.technicalFiles);
 
     const expandBtn = document.getElementById("filesExpandBtn");
     if (expandBtn) {
       expandBtn.onclick = function () {
-        showAll = !showAll;
-        expandBtn.textContent = showAll ? "Show less" : "View all";
-        renderFiles(filesWithUrls, showAll);
+        portalState.showAllFiles = !portalState.showAllFiles;
+        expandBtn.textContent = portalState.showAllFiles ? "Show less" : "View all";
+        renderFiles(portalState.technicalFiles);
       };
     }
   }
@@ -340,8 +460,9 @@ function renderMessages(messages) {
       })
     );
 
-    renderCommercial(docsWithUrls);
-    return docsWithUrls;
+    portalState.commercialFiles = docsWithUrls;
+    renderCommercial(portalState.commercialFiles);
+    return portalState.commercialFiles;
   }
 
   async function loadMessages(companyId) {
@@ -359,7 +480,8 @@ function renderMessages(messages) {
       return;
     }
 
-    renderMessages(data || []);
+    portalState.messages = data || [];
+    renderMessages(portalState.messages);
   }
 
   async function sendMessage(profile) {
@@ -600,6 +722,18 @@ function renderMessages(messages) {
     statusEl.textContent = "No current action for this job";
   }
 
+  function bindSearch() {
+    const input = document.getElementById("portalSearchInput");
+    if (!input) {
+      return;
+    }
+
+    input.addEventListener("input", function () {
+      portalState.searchTerm = input.value || "";
+      rerenderPortal();
+    });
+  }
+
   async function handlePortalPage() {
     const welcomeEl = document.getElementById("portalWelcome");
     const subtextEl = document.getElementById("portalSubtext");
@@ -632,17 +766,22 @@ function renderMessages(messages) {
       return;
     }
 
+    portalState.profile = profile;
+
     welcomeEl.textContent = `Welcome, ${profile.full_name || "Client"}`;
     subtextEl.textContent =
       profile.role === "admin"
         ? "Admin access is active. Portal modules can now be built onto this shell"
         : "Client access is active. Your quotes, jobs, files and messages will appear here";
 
+    bindSearch();
+
     async function reloadPortalData() {
       const jobs = await loadJobs(profile.company_id);
       await loadFiles(profile.company_id);
       await loadCommercial(profile.company_id);
       await loadMessages(profile.company_id);
+      updateSearchStatus();
 
       const activeCommercialJob =
         jobs.find(function (job) {
