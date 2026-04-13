@@ -964,16 +964,16 @@ insertedFileIds.push(fileInsert.data.id);
 
     statusEl.textContent = `Quote request submitted: ${requestRef}`;
 
-    await supabaseClient
-      .from("wmas_messages")
-      .insert({
-        company_id: portalState.profile.company_id,
-        sender_profile_id: portalState.profile.id,
-        sender_role: "client",
-        subject: `Quote request submitted: ${requestRef}`,
-        message_body: `A new quote request has been submitted.\n\nTitle: ${title}\nPriority: ${priority}${preferredMaterials ? `\nPreferred materials: ${preferredMaterials}` : ""}`,
-        is_system: false
-      });
+await supabaseClient
+  .from("wmas_messages")
+  .insert({
+    company_id: portalState.profile.company_id,
+    sender_profile_id: portalState.profile.id,
+    sender_role: "client",
+    subject: `${title} | ${requestRef}`,
+    message_body: `A new quote request has been submitted.\n\nReference: ${requestRef}\nTitle: ${title}\nPriority: ${priority}${preferredMaterials ? `\nPreferred materials: ${preferredMaterials}` : ""}`,
+    is_system: false
+  });
 
     await loadMessages(portalState.profile.company_id);
   }
