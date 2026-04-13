@@ -217,6 +217,19 @@ h3{
   background:transparent;
   color:#fff;
   font-weight:700;
+  cursor:pointer;
+  transition:transform .15s ease, background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.btn:hover,
+.btn:focus-visible{
+  transform:translateY(-1px);
+  box-shadow:0 10px 24px rgba(0,0,0,.22);
+}
+
+.btn:focus-visible{
+  outline:2px solid rgba(255,255,255,.28);
+  outline-offset:2px;
 }
 
 .btn-primary{
@@ -428,7 +441,8 @@ label{
 }
 
 input,
-textarea{
+textarea,
+select{
   width:100%;
   background:#0f1318;
   color:#fff;
@@ -511,6 +525,7 @@ textarea{
     border:1px solid var(--line);
     background:transparent;
     color:#fff;
+    cursor:pointer;
   }
 
   .main-nav{
