@@ -120,29 +120,13 @@
     }
   }
 
-  function renderQuotes(quotes) {
-    const el = document.getElementById("quotesCardContent");
-    if (!el) {
-      return;
-    }
-
-    if (!quotes || quotes.length === 0) {
-      el.innerHTML = "<p>No quotes available yet</p>";
-      return;
-    }
-
-    el.innerHTML = quotes.map(function (quote) {
-      const status = getQuoteStatusMeta(quote.status);
-      return `
-        <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
-          <div style="font-weight:700;color:#edf1f4">${quote.quote_ref}</div>
-          <div style="margin-top:4px;color:#edf1f4">${quote.title}</div>
-          <div style="margin-top:10px">
-            ${badgeHtml(status.label, status.border, status.bg, status.color)}
-          </div>
-        </div>
-      `;
-    }).join("");
+  function getFileTypeLabel(file) {
+    const name = (file.file_name || "").toLowerCase();
+    if (name.endsWith(".pdf")) return "PDF";
+    if (name.endsWith(".zip")) return "ZIP";
+    if (name.endsWith(".dwg")) return "DWG";
+    if (name.endsWith(".dxf")) return "DXF";
+    return "File";
   }
 
   function renderJobs(jobs) {
@@ -168,15 +152,6 @@
         </div>
       `;
     }).join("");
-  }
-
-  function getFileTypeLabel(file) {
-    const name = (file.file_name || "").toLowerCase();
-    if (name.endsWith(".pdf")) return "PDF";
-    if (name.endsWith(".zip")) return "ZIP";
-    if (name.endsWith(".dwg")) return "DWG";
-    if (name.endsWith(".dxf")) return "DXF";
-    return "File";
   }
 
   function renderFiles(files, showAll) {
@@ -243,28 +218,39 @@
     }).join("");
   }
 
-  async function loadQuotes(companyId) {
-    const { data, error } = await supabaseClient
-      .from("wmas_quotes")
-      .select("quote_ref, title, status, issued_at")
-      .eq("company_id", companyId)
-      .order("issued_at", { ascending: false });
-
-    if (error) {
-      const el = document.getElementById("quotesCardContent");
-      if (el) {
-        el.textContent = "Unable to load quotes";
-      }
+  function renderMessages(messages) {
+    const el = document.getElementById("messagesCardContent");
+    if (!el) {
       return;
     }
 
-    renderQuotes(data || []);
+    if (!messages || messages.length === 0) {
+      el.innerHTML = "<p>No messages yet</p>";
+      return;
+    }
+
+    el.innerHTML = messages.map(function (message) {
+      const senderLabel = message.is_system
+        ? "System"
+        : (message.sender_role === "admin" ? "WMAS" : "Client");
+
+      return `
+        <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="font-weight:700;color:#edf1f4">${message.subject || "Message"}</div>
+            <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
+          </div>
+          <div style="margin-top:8px;color:#d7dee5;line-height:1.6">${message.message_body}</div>
+          <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
+        </div>
+      `;
+    }).join("");
   }
 
   async function loadJobs(companyId) {
     const { data, error } = await supabaseClient
       .from("wmas_jobs")
-      .select("id, job_ref, title, status, started_at, quote_accepted_at, quote_accepted_by, po_received_at")
+      .select("id, company_id, quote_id, job_ref, title, status, started_at, quote_accepted_at, quote_accepted_by, po_received_at")
       .eq("company_id", companyId)
       .order("started_at", { ascending: false });
 
@@ -354,6 +340,65 @@
 
     renderCommercial(docsWithUrls);
     return docsWithUrls;
+  }
+
+  async function loadMessages(companyId) {
+    const { data, error } = await supabaseClient
+      .from("wmas_messages")
+      .select("id, subject, message_body, sender_role, is_system, created_at")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      const el = document.getElementById("messagesCardContent");
+      if (el) {
+        el.textContent = "Unable to load messages";
+      }
+      return;
+    }
+
+    renderMessages(data || []);
+  }
+
+  async function sendMessage(profile) {
+    const subjectEl = document.getElementById("portalMessageSubject");
+    const bodyEl = document.getElementById("portalMessageBody");
+    const statusEl = document.getElementById("portalMessageStatus");
+
+    if (!subjectEl || !bodyEl || !statusEl) {
+      return;
+    }
+
+    const subject = subjectEl.value.trim();
+    const messageBody = bodyEl.value.trim();
+
+    if (!messageBody) {
+      statusEl.textContent = "Write a message before sending";
+      return;
+    }
+
+    statusEl.textContent = "Sending message";
+
+    const { error } = await supabaseClient
+      .from("wmas_messages")
+      .insert({
+        company_id: profile.company_id,
+        sender_profile_id: profile.id,
+        sender_role: profile.role,
+        subject: subject || "Portal message",
+        message_body: messageBody,
+        is_system: false
+      });
+
+    if (error) {
+      statusEl.textContent = error.message || "Unable to send message";
+      return;
+    }
+
+    subjectEl.value = "";
+    bodyEl.value = "";
+    statusEl.textContent = "Message sent";
+    await loadMessages(profile.company_id);
   }
 
   async function insertJobEvent(job, eventType, eventLabel, eventNotes, userId) {
@@ -592,10 +637,10 @@
         : "Client access is active. Your quotes, jobs, files and messages will appear here";
 
     async function reloadPortalData() {
-      await loadQuotes(profile.company_id);
       const jobs = await loadJobs(profile.company_id);
       await loadFiles(profile.company_id);
       await loadCommercial(profile.company_id);
+      await loadMessages(profile.company_id);
 
       const activeCommercialJob =
         jobs.find(function (job) {
@@ -606,6 +651,13 @@
     }
 
     await reloadPortalData();
+
+    const sendPortalMessageBtn = document.getElementById("sendPortalMessageBtn");
+    if (sendPortalMessageBtn) {
+      sendPortalMessageBtn.onclick = async function () {
+        await sendMessage(profile);
+      };
+    }
 
     if (signOutBtn) {
       signOutBtn.addEventListener("click", async function () {
