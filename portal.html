@@ -47,6 +47,14 @@
       <div class="section-head" style="max-width:900px">
         <h2 id="portalWelcome">Loading portal</h2>
         <p class="muted" id="portalSubtext">Checking your session and loading account access</p>
+
+        <div class="form-group" style="margin-top:18px;max-width:620px">
+          <label for="portalSearchInput">Search portal</label>
+          <input id="portalSearchInput" type="text" placeholder="Search by project number, quote, PO, file name or title">
+        </div>
+
+        <div id="portalSearchStatus" class="notice" style="margin-top:14px;max-width:620px">Showing all items</div>
+
         <div class="cta-row">
           <button id="portalSignOut" class="btn" type="button">Sign Out</button>
         </div>
@@ -86,28 +94,29 @@
           <div id="commercialActionArea" style="margin-top:14px"></div>
           <div id="commercialActionStatus" class="notice" style="margin-top:14px">No current action</div>
         </div>
-<div class="card">
-  <h3>Messages</h3>
-  <div id="messagesCardContent" class="muted">Loading messages</div>
 
-  <div style="margin-top:14px">
-    <div class="form-group">
-      <label for="portalMessageSubject">Subject</label>
-      <input id="portalMessageSubject" type="text" placeholder="Project query, approval note, install question">
-    </div>
+        <div class="card">
+          <h3>Messages</h3>
+          <div id="messagesCardContent" class="muted">Loading messages</div>
 
-    <div class="form-group" style="margin-top:12px">
-      <label for="portalMessageBody">Message</label>
-      <textarea id="portalMessageBody" placeholder="Write your message here"></textarea>
-    </div>
+          <div style="margin-top:14px">
+            <div class="form-group">
+              <label for="portalMessageSubject">Subject</label>
+              <input id="portalMessageSubject" type="text" placeholder="Project query, approval note, install question">
+            </div>
 
-    <div class="cta-row" style="margin-top:12px">
-      <button id="sendPortalMessageBtn" class="btn btn-primary" type="button">Send message</button>
-    </div>
+            <div class="form-group" style="margin-top:12px">
+              <label for="portalMessageBody">Message</label>
+              <textarea id="portalMessageBody" placeholder="Write your message here"></textarea>
+            </div>
 
-    <div id="portalMessageStatus" class="notice" style="margin-top:14px">No new message</div>
-  </div>
-</div>
+            <div class="cta-row" style="margin-top:12px">
+              <button id="sendPortalMessageBtn" class="btn btn-primary" type="button">Send message</button>
+            </div>
+
+            <div id="portalMessageStatus" class="notice" style="margin-top:14px">No new message</div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
