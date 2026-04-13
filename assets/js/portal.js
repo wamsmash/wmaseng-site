@@ -350,7 +350,7 @@ const formattedBody = rawBody
             <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
           </div>
           <div style="margin-top:8px;color:#d7dee5;line-height:1.7">${formattedBody}</div>
-${rfqId ? `<div style="margin-top:10px"><button class="btn" data-rfq="${rfqId}">Create Job from RFQ</button></div>` : ""}
+${rfqId && portalState.profile?.role === "admin" ? `<div style="margin-top:10px"><button class="btn" data-rfq="${rfqId}">Create Job from RFQ</button></div>` : ""}
           <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
         </div>
       `;
@@ -1021,6 +1021,39 @@ await supabaseClient
     await loadFiles(companyId);
     await loadCommercial(companyId);
     await loadMessages(companyId);
+    setTimeout(() => {
+  document.querySelectorAll("[data-rfq]").forEach(btn => {
+    btn.onclick = async function () {
+      const rfqId = btn.getAttribute("data-rfq");
+
+      const { data: rfq } = await supabaseClient
+        .from("wmas_quote_requests")
+        .select("id, title, company_id")
+        .eq("id", rfqId)
+        .single();
+
+      if (!rfq) return;
+
+      const jobRef = `WM${Date.now().toString().slice(-6)}`;
+
+      await supabaseClient
+        .from("wmas_jobs")
+        .insert({
+          company_id: rfq.company_id,
+          job_ref: jobRef,
+          title: rfq.title,
+          description: "Created from RFQ",
+          status: "estimating",
+          quote_request_id: rfq.id,
+          created_by: portalState.profile.id,
+          started_at: new Date().toISOString()
+        });
+
+      await reloadPortalData();
+    };
+  });
+}, 300);
+    
     updateSearchStatus();
 
     const activeCommercialJob =
