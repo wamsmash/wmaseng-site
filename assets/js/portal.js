@@ -358,7 +358,7 @@ function renderMessages(messages) {
           <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
         </div>
         <div style="margin-top:8px;color:#d7dee5;line-height:1.7">${formattedBody}</div>
-        ${portalState.profile?.role === "admin" && (rfqId || requestRef) ? `<div style="margin-top:10px"><button class="btn" data-rfq="${rfqId || ""}" data-request-ref="${requestRef || ""}">Create Job from RFQ</button></div>` : ""}
+        ${portalState.profile?.role === "admin" && (rfqId || requestRef) && !portalState.jobs.some(j => j.quote_request_id === rfqId) ? `<div style="margin-top:10px"><button class="btn" data-rfq="${rfqId || ""}" data-request-ref="${requestRef || ""}">Create Job from RFQ</button></div>` : ""}
         <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
       </div>
     `;
