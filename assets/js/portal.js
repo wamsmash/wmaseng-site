@@ -88,6 +88,8 @@
 
   function getJobStatusMeta(status) {
     switch (status) {
+        case "rfq_submitted":
+        return { label: "RFQ submitted", bg: "rgba(124,136,155,.12)", border: "rgba(124,136,155,.28)", color: "#d7dee5" };
       case "estimating":
         return { label: "Estimating", bg: "rgba(208,165,47,.14)", border: "rgba(208,165,47,.34)", color: "#f0c75a" };
       case "quoted":
@@ -357,25 +359,60 @@ ${rfqId && portalState.profile?.role === "admin" ? `<div style="margin-top:10px"
     }).join("");
   }
 
-  async function loadJobs(companyId) {
-    const { data, error } = await supabaseClient
-      .from("wmas_jobs")
-      .select("id, company_id, quote_id, job_ref, title, status, started_at, quote_accepted_at, quote_accepted_by, po_received_at")
-      .eq("company_id", companyId)
-      .order("started_at", { ascending: false });
+async function loadJobs(companyId) {
+  const { data: jobsData, error: jobsError } = await supabaseClient
+    .from("wmas_jobs")
+    .select("id, company_id, quote_id, quote_request_id, job_ref, title, status, started_at")
+    .eq("company_id", companyId)
+    .order("started_at", { ascending: false });
 
-    if (error) {
-      const el = document.getElementById("jobsCardContent");
-      if (el) {
-        el.textContent = "Unable to load jobs";
-      }
-      return [];
+  const { data: rfqData } = await supabaseClient
+    .from("wmas_quote_requests")
+    .select("id, company_id, request_ref, title, created_at, status")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
+
+  if (jobsError) {
+    const el = document.getElementById("jobsCardContent");
+    if (el) {
+      el.textContent = "Unable to load jobs";
     }
-
-    portalState.jobs = data || [];
-    renderJobs(portalState.jobs);
-    return portalState.jobs;
+    return [];
   }
+
+  const linkedRfqIds = new Set(
+    (jobsData || [])
+      .map(function (job) {
+        return job.quote_request_id;
+      })
+      .filter(Boolean)
+  );
+
+  const rfqAsJobs = (rfqData || [])
+    .filter(function (rfq) {
+      return !linkedRfqIds.has(rfq.id);
+    })
+    .map(function (rfq) {
+      return {
+        id: `rfq-${rfq.id}`,
+        company_id: rfq.company_id,
+        quote_id: null,
+        quote_request_id: rfq.id,
+        job_ref: rfq.request_ref,
+        title: rfq.title,
+        status: "rfq_submitted",
+        started_at: rfq.created_at
+      };
+    });
+
+  const combined = rfqAsJobs.concat(jobsData || []).sort(function (a, b) {
+    return new Date(b.started_at) - new Date(a.started_at);
+  });
+
+  portalState.jobs = combined;
+  renderJobs(portalState.jobs);
+  return portalState.jobs;
+}
 
   async function loadFiles(companyId) {
     const { data, error } = await supabaseClient
