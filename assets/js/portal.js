@@ -200,7 +200,7 @@
         : "";
 
       return `
-<div style="padding:12px 14px 12px 0;border-top:1px solid rgba(255,255,255,.08)">
+<div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
           <div style="font-weight:700;color:#edf1f4">${job.job_ref}</div>
           <div style="margin-top:4px;color:#edf1f4">${job.title}</div>
           <div style="margin-top:10px">
@@ -333,7 +333,7 @@
       const formattedBody = (message.message_body || "").replace(/\n/g, "<br>");
 
       return `
-        <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+        <div style="padding:12px 14px 12px 0;border-top:1px solid rgba(255,255,255,.08)">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
             <div style="font-weight:700;color:#edf1f4">${message.subject || "Message"}</div>
             <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
