@@ -972,7 +972,7 @@ await supabaseClient
     sender_profile_id: portalState.profile.id,
     sender_role: "client",
     subject: `${requestRef} | ${title}`,
-    message_body: `A new quote request has been submitted.\n\nReference: ${requestRef}\nTitle: ${title}\nPriority: ${priority}${preferredMaterials ? `\nPreferred materials: ${preferredMaterials}` : ""}`,
+    message_body: `RFQ_ID:${quoteRequestId}\nA new quote request has been submitted.\n\nReference: ${requestRef}\nTitle: ${title}\nPriority: ${priority}${preferredMaterials ? `\nPreferred materials: ${preferredMaterials}` : ""}`,
     is_system: false
   });
 
