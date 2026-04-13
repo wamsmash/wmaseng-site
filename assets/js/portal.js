@@ -910,7 +910,7 @@ const uploadResult = await supabaseClient.storage
         description: description,
         preferred_materials: preferredMaterials,
         priority: priority,
-        status: "new",
+        status: "rfq_submitted",
         admin_alert: true
       })
       .select("id")
