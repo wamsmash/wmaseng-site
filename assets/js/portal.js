@@ -583,7 +583,7 @@ const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
     statusEl.textContent = "Uploading purchase order";
 
 const uploadResult = await supabaseClient.storage
-  .from("wmas-quote-request-files")
+  .from("wmas-commercial-files")
   .upload(objectPath, file, {
     upsert: false
   });
