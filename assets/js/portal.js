@@ -772,7 +772,7 @@
     subtextEl.textContent =
       profile.role === "admin"
         ? "Admin access is active. Portal modules can now be built onto this shell"
-        : "Client access is active. Your quotes, jobs, files and messages will appear here";
+        : "Client access is active. Your projects, files and messages are ready below";
 
     bindSearch();
 
