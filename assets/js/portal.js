@@ -883,11 +883,11 @@ if (!companyFolder) {
       const safeFileName = file.name.replace(/\s+/g, "_");
       const objectPath = `${companyFolder}/${requestRef}_${safeFileName}`;
 
-      const uploadResult = await supabaseClient.storage
-        .from("wmas-quote-request-files")
-        .upload(objectPath, file, {
-          upsert: true
-        });
+const uploadResult = await supabaseClient.storage
+  .from("wmas-quote-request-files")
+  .upload(objectPath, file, {
+    upsert: false
+  });
 
 if (uploadResult.error) {
   if (insertedFileIds.length) {
