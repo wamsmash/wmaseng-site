@@ -330,7 +330,18 @@
         ? "System"
         : (message.sender_role === "admin" ? "WMAS" : "Client");
 
-      const formattedBody = (message.message_body || "").replace(/\n/g, "<br>");
+let rfqId = null;
+const rawBody = message.message_body || "";
+
+if (rawBody.startsWith("RFQ_ID:")) {
+  const firstLine = rawBody.split("\n")[0];
+  rfqId = firstLine.replace("RFQ_ID:", "").trim();
+}
+
+const formattedBody = rawBody
+  .replace(/^RFQ_ID:.*\n/, "")
+  .replace(/\n/g, "<br>");
+      
 
       return `
         <div style="padding:12px 14px 12px 0;border-top:1px solid rgba(255,255,255,.08)">
