@@ -582,11 +582,11 @@ const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
 
     statusEl.textContent = "Uploading purchase order";
 
-    const uploadResult = await supabaseClient.storage
-      .from("wmas-commercial-files")
-      .upload(objectPath, file, {
-        upsert: true
-      });
+const uploadResult = await supabaseClient.storage
+  .from("wmas-quote-request-files")
+  .upload(objectPath, file, {
+    upsert: false
+  });
 
     if (uploadResult.error) {
       statusEl.textContent = uploadResult.error.message || "Unable to upload purchase order";
