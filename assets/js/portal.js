@@ -200,7 +200,7 @@
         : "";
 
       return `
-        <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+<div style="padding:12px 14px 12px 0;border-top:1px solid rgba(255,255,255,.08)">
           <div style="font-weight:700;color:#edf1f4">${job.job_ref}</div>
           <div style="margin-top:4px;color:#edf1f4">${job.title}</div>
           <div style="margin-top:10px">
