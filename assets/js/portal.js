@@ -1064,34 +1064,49 @@ await supabaseClient
   document.querySelectorAll("[data-rfq]").forEach(btn => {
     btn.onclick = async function () {
       const rfqId = btn.getAttribute("data-rfq");
+const { data: rfq } = await supabaseClient
+  .from("wmas_quote_requests")
+  .select("id, title, company_id")
+  .eq("id", rfqId)
+  .single();
 
-      const { data: rfq } = await supabaseClient
-        .from("wmas_quote_requests")
-        .select("id, title, company_id")
-        .eq("id", rfqId)
-        .single();
+if (!rfq) return;
 
-      if (!rfq) return;
+btn.disabled = true;
+btn.textContent = "Creating...";
 
-      const jobRef = `WM${Date.now().toString().slice(-6)}`;
+const { data: existingJob } = await supabaseClient
+  .from("wmas_jobs")
+  .select("id")
+  .eq("quote_request_id", rfq.id)
+  .maybeSingle();
 
-      await supabaseClient
-        .from("wmas_jobs")
-        .insert({
-          company_id: rfq.company_id,
-          job_ref: jobRef,
-          title: rfq.title,
-          description: "Created from RFQ",
-          status: "estimating",
-          quote_request_id: rfq.id,
-          created_by: portalState.profile.id,
-          started_at: new Date().toISOString()
-        });
+if (existingJob) {
+  await reloadPortalData();
+  return;
+}
+
+const jobRef = `WM${Date.now().toString().slice(-6)}`;
+
+await supabaseClient
+  .from("wmas_jobs")
+  .insert({
+    company_id: rfq.company_id,
+    job_ref: jobRef,
+    title: rfq.title,
+    description: "Created from RFQ",
+    status: "estimating",
+    quote_request_id: rfq.id,
+    created_by: portalState.profile.id,
+    started_at: new Date().toISOString()
+  });
+
 await supabaseClient
   .from("wmas_quote_requests")
   .update({ status: "in_progress" })
   .eq("id", rfq.id);
-      await reloadPortalData();
+
+await reloadPortalData();
     };
   });
 }, 300);
