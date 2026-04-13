@@ -862,7 +862,7 @@ const uploadResult = await supabaseClient.storage
       notice.textContent = `Job created for ${portalState.adminTargetCompany.name}`;
       refEl.value = "";
       titleEl.value = "";
-      statusEl.value = "quoted";
+      statusEl.value = "estimating";
 
       await reloadPortalData();
     };
