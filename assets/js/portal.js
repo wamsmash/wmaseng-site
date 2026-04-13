@@ -89,7 +89,7 @@
 function getJobStatusMeta(status) {
   switch (status) {
     case "rfq_submitted":
-      return { label: "RFQ submitted", bg: "rgba(124,136,155,.12)", border: "rgba(124,136,155,.28)", color: "#d7dee5" };
+      return { label: "Submitted for RFQ", bg: "rgba(124,136,155,.12)", border: "rgba(124,136,155,.28)", color: "#d7dee5" };
     case "estimating":
       return { label: "Reviewing / Estimating", bg: "rgba(208,165,47,.14)", border: "rgba(208,165,47,.34)", color: "#f0c75a" };
     case "quoted":
