@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="en">
 <head>
@@ -60,6 +61,43 @@
         </div>
       </div>
 
+      <div id="adminPanelWrap" class="split-panel" style="margin-bottom:16px;display:none">
+        <div class="card" style="grid-column:1/-1">
+          <h3>Admin Controls</h3>
+          <p class="muted">Create jobs and manage portal content from here</p>
+
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group">
+              <label for="adminJobRef">Job reference</label>
+              <input id="adminJobRef" type="text" placeholder="WM001-01-005">
+            </div>
+
+            <div class="form-group">
+              <label for="adminJobStatus">Status</label>
+              <select id="adminJobStatus">
+                <option value="quoted">Quoted</option>
+                <option value="awaiting_po">Awaiting PO</option>
+                <option value="designing">Designing</option>
+                <option value="awaiting_approval">Awaiting approval</option>
+                <option value="drafting_pack">Drafting pack</option>
+                <option value="complete">Complete</option>
+              </select>
+            </div>
+
+            <div class="form-group full">
+              <label for="adminJobTitle">Job title</label>
+              <input id="adminJobTitle" type="text" placeholder="New access platform package">
+            </div>
+          </div>
+
+          <div class="cta-row" style="margin-top:14px">
+            <button id="adminCreateJobBtn" class="btn btn-primary" type="button">Create Job</button>
+          </div>
+
+          <div id="adminJobStatusNotice" class="notice" style="margin-top:14px">No admin action yet</div>
+        </div>
+      </div>
+
       <div class="split-panel">
         <div class="card">
           <h3>Request Quote</h3>
@@ -73,28 +111,6 @@
       </div>
 
       <div class="split-panel" style="margin-top:16px">
-        <div class="card">
-          <h3>Jobs</h3>
-          <div id="jobsCardContent" class="muted">Loading jobs</div>
-        </div>
-
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-            <h3 style="margin:0">Technical Files</h3>
-            <button id="filesExpandBtn" class="btn" type="button" style="min-height:38px;padding:0 14px">View all</button>
-          </div>
-          <div id="filesCardContent" class="muted" style="margin-top:14px">Loading files</div>
-        </div>
-      </div>
-
-      <div class="split-panel" style="margin-top:16px">
-        <div class="card">
-          <h3>Commercial</h3>
-          <div id="commercialCardContent" class="muted">Loading commercial documents</div>
-          <div id="commercialActionArea" style="margin-top:14px"></div>
-          <div id="commercialActionStatus" class="notice" style="margin-top:14px">No current action</div>
-        </div>
-
         <div class="card">
           <h3>Messages</h3>
           <div id="messagesCardContent" class="muted">Loading messages</div>
@@ -116,6 +132,28 @@
 
             <div id="portalMessageStatus" class="notice" style="margin-top:14px">No new message</div>
           </div>
+        </div>
+
+        <div class="card">
+          <h3>Jobs</h3>
+          <div id="jobsCardContent" class="muted">Loading jobs</div>
+        </div>
+      </div>
+
+      <div class="split-panel" style="margin-top:16px">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <h3 style="margin:0">Technical Files</h3>
+            <button id="filesExpandBtn" class="btn" type="button" style="min-height:38px;padding:0 14px">View all</button>
+          </div>
+          <div id="filesCardContent" class="muted" style="margin-top:14px">Loading files</div>
+        </div>
+
+        <div class="card">
+          <h3>Commercial</h3>
+          <div id="commercialCardContent" class="muted">Loading commercial documents</div>
+          <div id="commercialActionArea" style="margin-top:14px"></div>
+          <div id="commercialActionStatus" class="notice" style="margin-top:14px">No current action</div>
         </div>
       </div>
     </div>
@@ -146,3 +184,4 @@
   <script src="assets/js/portal.js"></script>
 </body>
 </html>
+```
