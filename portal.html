@@ -107,7 +107,43 @@
       <div class="split-panel">
         <div class="card">
           <h3>Request Quote</h3>
-          <p class="muted">Portal quote request workflow will appear here</p>
+          <p class="muted">Send a new request with notes, preferred materials and reference files</p>
+
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group full">
+              <label for="quoteRequestTitle">Project title</label>
+              <input id="quoteRequestTitle" type="text" placeholder="Container lifting frame, access ladder, conveyor support">
+            </div>
+
+            <div class="form-group full">
+              <label for="quoteRequestDescription">Design notes</label>
+              <textarea id="quoteRequestDescription" placeholder="Outline the requirement, dimensions, site conditions, design intent and anything important to price or model correctly"></textarea>
+            </div>
+
+            <div class="form-group full">
+              <label for="quoteRequestMaterials">Preferred materials or sections</label>
+              <input id="quoteRequestMaterials" type="text" placeholder="200 x 8 plate, 150 x 75 x 18 PFC, stainless, aluminium, galvanised">
+            </div>
+
+            <div class="form-group">
+              <label for="quoteRequestPriority">Priority</label>
+              <select id="quoteRequestPriority">
+                <option value="normal">Normal</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="quoteRequestFiles">Reference files</label>
+              <input id="quoteRequestFiles" type="file" multiple accept=".pdf,.zip,.dwg,.dxf,.step,.stp,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx">
+            </div>
+          </div>
+
+          <div class="cta-row" style="margin-top:14px">
+            <button id="submitQuoteRequestBtn" class="btn btn-primary" type="button">Submit Quote Request</button>
+          </div>
+
+          <div id="quoteRequestStatus" class="notice" style="margin-top:14px">No quote request submitted yet</div>
         </div>
 
         <div class="card">
