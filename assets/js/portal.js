@@ -304,61 +304,67 @@ function getJobStatusMeta(status) {
     }).join("");
   }
 
-  function renderMessages(messages) {
-    const el = document.getElementById("messagesCardContent");
-    if (!el) {
-      return;
-    }
-
-    if (!messages || messages.length === 0) {
-      el.innerHTML = "<p>No messages yet</p>";
-      return;
-    }
-
-    const sortedMessages = sortBySearchMatch(messages, ["subject", "message_body", "sender_role"]);
-    const visibleMessages = portalState.searchTerm
-      ? sortedMessages.filter(function (message) {
-          return itemMatchesSearch(message, ["subject", "message_body", "sender_role"]);
-        })
-      : sortedMessages;
-
-    if (visibleMessages.length === 0) {
-      el.innerHTML = "<p>No matching messages</p>";
-      return;
-    }
-
-    el.innerHTML = visibleMessages.map(function (message) {
-      const senderLabel = message.is_system
-        ? "System"
-        : (message.sender_role === "admin" ? "WMAS" : "Client");
-
-let rfqId = null;
-const rawBody = message.message_body || "";
-
-if (rawBody.startsWith("RFQ_ID:")) {
-  const firstLine = rawBody.split("\n")[0];
-  rfqId = firstLine.replace("RFQ_ID:", "").trim();
-}
-
-const formattedBody = rawBody
-  .replace(/^RFQ_ID:.*\n/, "")
-  .replace(/\n/g, "<br>");
-      
-
-      return `
-        <div style="padding:12px 14px 12px 0;border-top:1px solid rgba(255,255,255,.08)">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-            <div style="font-weight:700;color:#edf1f4">${message.subject || "Message"}</div>
-            <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
-          </div>
-          <div style="margin-top:8px;color:#d7dee5;line-height:1.7">${formattedBody}</div>
-${rfqId && portalState.profile?.role === "admin" ? `<div style="margin-top:10px"><button class="btn" data-rfq="${rfqId}">Create Job from RFQ</button></div>` : ""}
-          <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
-        </div>
-      `;
-    }).join("");
+function renderMessages(messages) {
+  const el = document.getElementById("messagesCardContent");
+  if (!el) {
+    return;
   }
 
+  if (!messages || messages.length === 0) {
+    el.innerHTML = "<p>No messages yet</p>";
+    return;
+  }
+
+  const sortedMessages = sortBySearchMatch(messages, ["subject", "message_body", "sender_role"]);
+  const visibleMessages = portalState.searchTerm
+    ? sortedMessages.filter(function (message) {
+        return itemMatchesSearch(message, ["subject", "message_body", "sender_role"]);
+      })
+    : sortedMessages;
+
+  if (visibleMessages.length === 0) {
+    el.innerHTML = "<p>No matching messages</p>";
+    return;
+  }
+
+  el.innerHTML = visibleMessages.map(function (message) {
+    const senderLabel = message.is_system
+      ? "System"
+      : (message.sender_role === "admin" ? "WMAS" : "Client");
+
+    let rfqId = null;
+    let requestRef = null;
+    const rawBody = message.message_body || "";
+    const subject = message.subject || "";
+
+    if (rawBody.startsWith("RFQ_ID:")) {
+      const firstLine = rawBody.split("\n")[0];
+      rfqId = firstLine.replace("RFQ_ID:", "").trim();
+    }
+
+    const subjectMatch = subject.match(/QR-\d+/);
+    if (subjectMatch) {
+      requestRef = subjectMatch[0];
+    }
+
+    const formattedBody = rawBody
+      .replace(/^RFQ_ID:.*\n/, "")
+      .replace(/\n/g, "<br>");
+
+    return `
+      <div style="padding:12px 14px 12px 0;border-top:1px solid rgba(255,255,255,.08)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-weight:700;color:#edf1f4">${subject || "Message"}</div>
+          <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
+        </div>
+        <div style="margin-top:8px;color:#d7dee5;line-height:1.7">${formattedBody}</div>
+        ${portalState.profile?.role === "admin" && (rfqId || requestRef) ? `<div style="margin-top:10px"><button class="btn" data-rfq="${rfqId || ""}" data-request-ref="${requestRef || ""}">Create Job from RFQ</button></div>` : ""}
+        <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
+      </div>
+    `;
+  }).join("");
+}
+  
 async function loadJobs(companyId) {
   const { data: jobsData, error: jobsError } = await supabaseClient
     .from("wmas_jobs")
@@ -1063,12 +1069,19 @@ await supabaseClient
     setTimeout(() => {
   document.querySelectorAll("[data-rfq]").forEach(btn => {
     btn.onclick = async function () {
-      const rfqId = btn.getAttribute("data-rfq");
-const { data: rfq } = await supabaseClient
+      let rfqId = btn.getAttribute("data-rfq");
+const requestRef = btn.getAttribute("data-request-ref");
+let rfqQuery = supabaseClient
   .from("wmas_quote_requests")
-  .select("id, title, company_id")
-  .eq("id", rfqId)
-  .single();
+  .select("id, title, company_id, request_ref");
+
+if (rfqId) {
+  rfqQuery = rfqQuery.eq("id", rfqId);
+} else {
+  rfqQuery = rfqQuery.eq("request_ref", requestRef);
+}
+
+const { data: rfq } = await rfqQuery.single();
 
 if (!rfq) return;
 
