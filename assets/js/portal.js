@@ -822,24 +822,25 @@ if (insertResult.error) {
       statusEl.textContent = "No current action";
       return;
     }
+if (job.status === "quoted") {
+  actionArea.innerHTML = `
+    <button id="acceptQuoteBtn" class="btn btn-primary" type="button">Accept Quote</button>
+  `;
+  statusEl.textContent = "This quote is ready for acceptance";
 
-    if (job.status === "quoted") {
-      actionArea.innerHTML = `
-        <button id="acceptQuoteBtn" class="btn btn-primary" type="button">Accept Quote</button>
-      `;
-      statusEl.textContent = "This quote is ready for acceptance";
+  const btn = document.getElementById("acceptQuoteBtn");
+  if (btn) {
+    btn.onclick = async function () {
+      const ok = await handleAcceptQuote(job, profile.id);
+      if (ok) {
+        await reloadFn();
+      }
+    };
+  }
+}
 
-      const btn = document.getElementById("acceptQuoteBtn");
-      if (btn) {
-        btn.onclick = async function () {
-          const ok = await handleAcceptQuote(job, profile.id);
-          if (ok) {
-            await reloadFn();
-          }
-        };
-      }
-      }
-      return;
+return;
+}
 
 
 
