@@ -813,6 +813,122 @@ const uploadResult = await supabaseClient.storage
     };
   }
 
+async function handleAdminManageJobs() {
+  const companySelect = document.getElementById("adminManageCompany");
+  const jobSelect = document.getElementById("adminManageJob");
+  const statusSelect = document.getElementById("adminManageStatus");
+  const updateBtn = document.getElementById("adminUpdateJobBtn");
+  const deleteBtn = document.getElementById("adminDeleteJobBtn");
+  const notice = document.getElementById("adminManageStatusNotice");
+
+  if (!companySelect || !jobSelect || !statusSelect || !updateBtn || !deleteBtn || !notice) {
+    return;
+  }
+
+  function loadCompanies() {
+    companySelect.innerHTML = portalState.adminCompanies
+      .map(function (company) {
+        return `<option value="${company.id}">${company.name}</option>`;
+      })
+      .join("");
+
+    if (portalState.adminTargetCompany) {
+      companySelect.value = portalState.adminTargetCompany.id;
+    }
+  }
+
+  async function loadJobsForCompany() {
+    const companyId = companySelect.value;
+
+    const { data: jobs } = await supabaseClient
+      .from("wmas_jobs")
+      .select("id, job_ref, title, status")
+      .eq("company_id", companyId)
+      .order("started_at", { ascending: false });
+
+    jobSelect.innerHTML = (jobs || [])
+      .map(function (job) {
+        return `<option value="${job.id}" data-status="${job.status}">${job.job_ref} | ${job.title}</option>`;
+      })
+      .join("");
+
+    const selected = jobSelect.selectedOptions[0];
+    if (selected) {
+      statusSelect.value = selected.getAttribute("data-status") || "estimating";
+    }
+  }
+
+  companySelect.onchange = async function () {
+    await loadJobsForCompany();
+  };
+
+  jobSelect.onchange = function () {
+    const selected = jobSelect.selectedOptions[0];
+    if (selected) {
+      statusSelect.value = selected.getAttribute("data-status") || "estimating";
+    }
+  };
+
+  updateBtn.onclick = async function () {
+    const jobId = jobSelect.value;
+    const newStatus = statusSelect.value;
+
+    if (!jobId) {
+      notice.textContent = "Select a job";
+      return;
+    }
+
+    notice.textContent = "Updating job";
+
+    const { error } = await supabaseClient
+      .from("wmas_jobs")
+      .update({ status: newStatus })
+      .eq("id", jobId);
+
+    if (error) {
+      notice.textContent = error.message || "Update failed";
+      return;
+    }
+
+    notice.textContent = "Job updated";
+    await reloadPortalData();
+    await loadJobsForCompany();
+  };
+
+  deleteBtn.onclick = async function () {
+    const jobId = jobSelect.value;
+
+    if (!jobId) {
+      notice.textContent = "Select a job";
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this job? This cannot be undone");
+    if (!confirmed) {
+      return;
+    }
+
+    notice.textContent = "Deleting job";
+
+    const { error } = await supabaseClient
+      .from("wmas_jobs")
+      .delete()
+      .eq("id", jobId);
+
+    if (error) {
+      notice.textContent = error.message || "Delete failed";
+      return;
+    }
+
+    notice.textContent = "Job deleted";
+    await reloadPortalData();
+    await loadJobsForCompany();
+  };
+
+  loadCompanies();
+  await loadJobsForCompany();
+}
+  
   async function handleAdminCreateJob() {
     const btn = document.getElementById("adminCreateJobBtn");
     const notice = document.getElementById("adminJobStatusNotice");
