@@ -109,6 +109,47 @@
 
           <div id="adminJobStatusNotice" class="notice" style="margin-top:14px">No admin action yet</div>
         </div>
+
+        <div class="card" style="grid-column:1/-1;margin-top:16px">
+          <h3>Admin Job Actions</h3>
+          <p class="muted">Update job status or remove test data</p>
+
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group">
+              <label for="adminManageCompany">Client company</label>
+              <select id="adminManageCompany">
+                <option value="">Loading client companies</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="adminManageJob">Select job</label>
+              <select id="adminManageJob">
+                <option value="">Select a job</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="adminManageStatus">Update status</label>
+              <select id="adminManageStatus">
+                <option value="estimating">Reviewing / estimating</option>
+                <option value="quoted">Quoted</option>
+                <option value="awaiting_po">Awaiting PO</option>
+                <option value="designing">Designing</option>
+                <option value="awaiting_approval">Awaiting approval</option>
+                <option value="drafting_pack">Drafting pack</option>
+                <option value="complete">Complete</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="cta-row" style="margin-top:14px">
+            <button id="adminUpdateJobBtn" class="btn btn-primary" type="button">Update Status</button>
+            <button id="adminDeleteJobBtn" class="btn" type="button" style="background:#7a1f1f">Delete Job</button>
+          </div>
+
+          <div id="adminManageStatusNotice" class="notice" style="margin-top:14px">No action yet</div>
+        </div>
       </div>
 
       <div class="split-panel" style="margin-top:16px">
