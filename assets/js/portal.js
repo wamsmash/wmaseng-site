@@ -223,19 +223,48 @@ if (job.status === "quoted") {
 }
 
 if (job.status === "awaiting_po") {
-  nextStep = "Upload your purchase order to secure the job";
+  if (!latestPO) {
+    nextStep = "Upload your purchase order to proceed";
 
-  actionHtml = `
-    <div style="margin-top:10px">
-      <input type="file" data-po-input="${job.id}" />
-      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary" data-upload-po="${job.id}">Upload PO</button>
-        ${latestPO ? `<button class="btn" data-delete-po data-id="${latestPO.id}" data-path="${latestPO.storage_path}">Replace PO</button>` : ""}
+    actionHtml = `
+      <div style="margin-top:10px">
+        ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
+        <div style="margin-top:10px">
+          <input type="file" data-po-input="${job.id}" accept=".pdf,.zip,.dwg,.dxf">
+          <button class="btn btn-primary" data-upload-po="${job.id}">Upload PO</button>
+        </div>
       </div>
-    </div>
-  `;
-}
+    `;
+  } else {
+    const created = new Date(latestPO.created_at).getTime();
+    const now = Date.now();
+    const msRemaining = 30000 - (now - created);
+    const withinWindow = msRemaining > 0;
 
+    nextStep = withinWindow
+      ? "Awaiting PO acceptance, you can amend for 30 seconds"
+      : "PO accepted, reviewing live capacity and creating concept model. Thank you for your business";
+
+    if (!withinWindow) {
+      status.label = "PO accepted";
+      status.bg = "rgba(108,186,92,.14)";
+      status.border = "rgba(108,186,92,.34)";
+      status.color = "#8fda7d";
+    }
+
+    actionHtml = `
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
+        <a class="btn" href="${latestPO.downloadUrl}" target="_blank">View PO</a>
+        ${
+          withinWindow
+            ? `<button class="btn" data-delete-po="${job.id}" data-path="${latestPO.storage_path}" data-id="${latestPO.id}">Delete PO</button>`
+            : ""
+        }
+      </div>
+    `;
+  }
+}
 
     if (job.status === "designing") {
       nextStep = "WMAS is progressing your order";
@@ -561,7 +590,6 @@ const linkedRfqIds = new Set(
   });
 
   portalState.jobs = combined;
-  renderJobs(portalState.jobs);
   return portalState.jobs;
 }
 
