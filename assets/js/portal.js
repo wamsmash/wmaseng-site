@@ -172,47 +172,122 @@ function getJobStatusMeta(status) {
     statusEl.textContent = `Search active: ${portalState.searchTerm}`;
   }
 
-  function renderJobs(jobs) {
-    const el = document.getElementById("jobsCardContent");
-    if (!el) {
-      return;
-    }
+function renderJobs(jobs) {
+  const el = document.getElementById("jobsCardContent");
+  if (!el) return;
 
-    if (!jobs || jobs.length === 0) {
-      el.innerHTML = "<p>No jobs available yet</p>";
-      return;
-    }
+  if (!jobs || jobs.length === 0) {
+    el.innerHTML = "<p>No jobs available yet</p>";
+    return;
+  }
 
-    const sortedJobs = sortBySearchMatch(jobs, ["job_ref", "title", "status"]);
-    const visibleJobs = portalState.searchTerm
-      ? sortedJobs.filter(function (job) {
-          return itemMatchesSearch(job, ["job_ref", "title", "status"]);
-        })
-      : sortedJobs;
+  const sortedJobs = sortBySearchMatch(jobs, ["job_ref", "title", "status"]);
+  const visibleJobs = portalState.searchTerm
+    ? sortedJobs.filter(function (job) {
+        return itemMatchesSearch(job, ["job_ref", "title", "status"]);
+      })
+    : sortedJobs;
 
-    if (visibleJobs.length === 0) {
-      el.innerHTML = "<p>No matching jobs</p>";
-      return;
-    }
+  if (visibleJobs.length === 0) {
+    el.innerHTML = "<p>No matching jobs</p>";
+    return;
+  }
 
-    el.innerHTML = visibleJobs.map(function (job) {
-      const status = getJobStatusMeta(job.status);
-      const timestampLabel = job.started_at
-        ? new Date(job.started_at).toLocaleString()
-        : "";
+  el.innerHTML = visibleJobs.map(function (job) {
+    const status = getJobStatusMeta(job.status);
 
-      return `
-<div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
-          <div style="font-weight:700;color:#edf1f4">${job.job_ref}</div>
-          <div style="margin-top:4px;color:#edf1f4">${job.title}</div>
-          <div style="margin-top:10px">
-            ${badgeHtml(status.label, status.border, status.bg, status.color)}
-          </div>
-          ${timestampLabel ? `<div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${timestampLabel}</div>` : ""}
+    const timestampLabel = job.started_at
+      ? new Date(job.started_at).toLocaleString()
+      : "";
+
+    const relatedDocs = portalState.commercialFiles.filter(function (file) {
+      return file.job_id === job.id;
+    });
+
+    const latestQuote = relatedDocs.find(f => f.document_kind === "quote");
+    const latestPO = relatedDocs.find(f => f.document_kind === "po");
+    const latestInvoice = relatedDocs.find(f => f.document_kind === "invoice");
+
+    let nextStep = "";
+    let actionHtml = "";
+
+    if (job.status === "quoted") {
+      nextStep = "Accept the issued quote to proceed";
+
+      actionHtml = `
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
+          <button class="btn btn-primary" data-accept-job="${job.id}">Accept Quote</button>
         </div>
       `;
-    }).join("");
-  }
+    }
+
+    if (job.status === "awaiting_po") {
+      nextStep = "Upload your purchase order to secure capacity";
+
+      actionHtml = `
+        <div style="margin-top:10px">
+          ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
+        </div>
+      `;
+    }
+
+    if (job.status === "designing") {
+      nextStep = "WMAS is progressing your order";
+    }
+
+    if (job.status === "awaiting_approval") {
+      nextStep = "Review issued drawing pack and confirm approval";
+    }
+
+    if (job.status === "drafting_pack") {
+      nextStep = "Final drawing pack is being prepared";
+    }
+
+    if (job.status === "complete") {
+      nextStep = "Payment due. Please refer to the invoice for bank transfer details";
+
+      actionHtml = `
+        <div style="margin-top:10px">
+          ${latestInvoice ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank">View Invoice</a>` : ""}
+        </div>
+      `;
+    }
+
+    return `
+      <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+        <div style="font-weight:700;color:#edf1f4">${job.job_ref}</div>
+        <div style="margin-top:4px;color:#edf1f4">${job.title}</div>
+
+        <div style="margin-top:10px">
+          ${badgeHtml(status.label, status.border, status.bg, status.color)}
+        </div>
+
+        ${nextStep ? `<div style="margin-top:10px;font-size:.9rem;color:#a8b2bc"><strong>Next step:</strong> ${nextStep}</div>` : ""}
+
+        ${actionHtml}
+
+        ${timestampLabel ? `<div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${timestampLabel}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  // bind accept quote buttons
+  setTimeout(() => {
+    document.querySelectorAll("[data-accept-job]").forEach(btn => {
+      btn.onclick = async function () {
+        const jobId = btn.getAttribute("data-accept-job");
+        const job = portalState.jobs.find(j => j.id == jobId);
+        if (!job) return;
+
+        const ok = await handleAcceptQuote(job, portalState.profile.id);
+        if (ok) {
+          await reloadPortalData();
+        }
+      };
+    });
+  }, 100);
+}
 
   function renderFiles(files) {
     const el = document.getElementById("filesCardContent");
