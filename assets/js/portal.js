@@ -173,7 +173,8 @@ function getJobStatusMeta(status) {
     statusEl.textContent = `Search active: ${portalState.searchTerm}`;
   }
 
-function renderJobs(jobs) {
+
+  function renderJobs(jobs) {
   const el = document.getElementById("jobsCardContent");
   if (!el) return;
 
@@ -205,66 +206,122 @@ function renderJobs(jobs) {
       return file.job_id === job.id;
     });
 
-    const latestQuote = relatedDocs.find(f => f.document_kind === "quote");
-    const latestPO = relatedDocs.find(f => f.document_kind === "po");
-    const latestInvoice = relatedDocs.find(f => f.document_kind === "invoice");
+    const latestQuote = relatedDocs.find(function (f) {
+      return f.document_kind === "quote";
+    });
+
+    const latestPO = relatedDocs.find(function (f) {
+      return f.document_kind === "po";
+    });
+
+    const latestInvoice = relatedDocs.find(function (f) {
+      return f.document_kind === "invoice";
+    });
+
+    const companyName =
+      portalState.profile?.role === "admin"
+        ? (
+            portalState.adminCompanies.find(function (company) {
+              return String(company.id) === String(job.company_id);
+            })?.name || "Client"
+          )
+        : (portalState.profile?.company_name || "Client");
+
+    const rfqFiles = portalState.rfqFiles.filter(function (file) {
+      return String(file.quote_request_id) === String(job.quote_request_id);
+    });
 
     let nextStep = "";
     let actionHtml = "";
-    
-if (job.status === "quoted") {
-  nextStep = "Accept the issued quote to proceed";
+    let extraInfoHtml = "";
 
-  actionHtml = `
-    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-      ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
-      <button class="btn btn-primary" data-accept-job="${job.id}">Accept Quote</button>
-    </div>
-  `;
-}
-
-if (job.status === "awaiting_po") {
-  if (!latestPO) {
-    nextStep = "Upload your purchase order to proceed";
-
-    actionHtml = `
-      <div style="margin-top:10px">
-        ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
-        <div style="margin-top:10px">
-          <input type="file" data-po-input="${job.id}" accept=".pdf,.zip,.dwg,.dxf">
-          <button class="btn btn-primary" data-upload-po="${job.id}">Upload PO</button>
+    if (job.status === "rfq_submitted") {
+      extraInfoHtml = `
+        <div style="margin-top:10px;font-size:.9rem;color:#a8b2bc">
+          <strong>Client:</strong> ${companyName}
         </div>
-      </div>
-    `;
-  } else {
-    const created = new Date(latestPO.created_at).getTime();
-    const now = Date.now();
-    const msRemaining = 30000 - (now - created);
-    const withinWindow = msRemaining > 0;
+        ${job.description ? `
+          <div style="margin-top:8px;font-size:.9rem;color:#d7dee5;line-height:1.6">
+            <strong>Design notes:</strong><br>${String(job.description).replace(/\n/g, "<br>")}
+          </div>
+        ` : ""}
+        ${job.preferred_materials ? `
+          <div style="margin-top:8px;font-size:.9rem;color:#d7dee5;line-height:1.6">
+            <strong>Preferred materials:</strong><br>${String(job.preferred_materials).replace(/\n/g, "<br>")}
+          </div>
+        ` : ""}
+        ${job.priority ? `
+          <div style="margin-top:8px;font-size:.9rem;color:#a8b2bc">
+            <strong>Priority:</strong> ${job.priority}
+          </div>
+        ` : ""}
+        ${rfqFiles.length ? `
+          <div style="margin-top:10px">
+            <div style="font-size:.9rem;color:#a8b2bc"><strong>Reference files:</strong></div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              ${rfqFiles.map(function (file) {
+                return `<a class="btn" href="${file.downloadUrl}" target="_blank" rel="noopener noreferrer">${file.file_name}</a>`;
+              }).join("")}
+            </div>
+          </div>
+        ` : ""}
+      `;
+    }
 
-nextStep = withinWindow
-  ? "Awaiting PO acceptance, you can amend for 30 seconds"
-  : "PO accepted, reviewing live capacity and creating concept model.<br><br>Thank you for your business";
+    if (job.status === "quoted") {
+      nextStep = "Accept the issued quote to proceed";
 
-if (!withinWindow) {
-  status.label = "PO accepted";
-  status.bg = "rgba(108,186,92,.14)";
-  status.border = "rgba(108,186,92,.34)";
-  status.color = "#8fda7d";
-}
-    actionHtml = `
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-        ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
-        <a class="btn" href="${latestPO.downloadUrl}" target="_blank">View PO</a>
-        ${
-          withinWindow
-            ? `<button class="btn" data-delete-po="${job.id}" data-path="${latestPO.storage_path}" data-id="${latestPO.id}">Delete PO</button>`
-            : ""
+      actionHtml = `
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank" rel="noopener noreferrer">View Quote</a>` : ""}
+          <button class="btn btn-primary" data-accept-job="${job.id}">Accept Quote</button>
+        </div>
+      `;
+    }
+
+    if (job.status === "awaiting_po") {
+      if (!latestPO) {
+        nextStep = "Upload your purchase order to proceed";
+
+        actionHtml = `
+          <div style="margin-top:10px">
+            ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank" rel="noopener noreferrer">View Quote</a>` : ""}
+            <div style="margin-top:10px">
+              <input type="file" data-po-input="${job.id}" accept=".pdf,.zip,.dwg,.dxf">
+              <button class="btn btn-primary" data-upload-po="${job.id}">Upload PO</button>
+            </div>
+          </div>
+        `;
+      } else {
+        const created = new Date(latestPO.created_at).getTime();
+        const now = Date.now();
+        const msRemaining = 30000 - (now - created);
+        const withinWindow = msRemaining > 0;
+
+        nextStep = withinWindow
+          ? "Awaiting PO acceptance, you can amend for 30 seconds"
+          : "PO accepted, reviewing live capacity and creating concept model.<br><br>Thank you for your business";
+
+        if (!withinWindow) {
+          status.label = "PO accepted";
+          status.bg = "rgba(108,186,92,.14)";
+          status.border = "rgba(108,186,92,.34)";
+          status.color = "#8fda7d";
         }
-      </div>
-    `;
-  }
-}
+
+        actionHtml = `
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank" rel="noopener noreferrer">View Quote</a>` : ""}
+            <a class="btn" href="${latestPO.downloadUrl}" target="_blank" rel="noopener noreferrer">View PO</a>
+            ${
+              withinWindow
+                ? `<button class="btn" data-delete-po="${job.id}" data-path="${latestPO.storage_path}" data-id="${latestPO.id}">Delete PO</button>`
+                : ""
+            }
+          </div>
+        `;
+      }
+    }
 
     if (job.status === "designing") {
       nextStep = "WMAS is progressing your order";
@@ -277,15 +334,16 @@ if (!withinWindow) {
     if (job.status === "drafting_pack") {
       nextStep = "Final drawing pack is being prepared";
     }
-if (job.status === "complete") {
-  nextStep = "Payment due. Please refer to the invoice for bank transfer details";
 
-  actionHtml = `
-    <div style="margin-top:10px">
-      ${latestInvoice ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank">View Invoice</a>` : ""}
-    </div>
-  `;
-}
+    if (job.status === "complete") {
+      nextStep = "Payment due. Please refer to the invoice for bank transfer details";
+
+      actionHtml = `
+        <div style="margin-top:10px">
+          ${latestInvoice ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank" rel="noopener noreferrer">View Invoice</a>` : ""}
+        </div>
+      `;
+    }
 
     return `
       <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
@@ -296,6 +354,8 @@ if (job.status === "complete") {
           ${badgeHtml(status.label, status.border, status.bg, status.color)}
         </div>
 
+        ${extraInfoHtml}
+
         ${nextStep ? `<div style="margin-top:10px;font-size:.9rem;color:#a8b2bc"><strong>Next step:</strong> ${nextStep}</div>` : ""}
 
         ${actionHtml}
@@ -303,91 +363,90 @@ if (job.status === "complete") {
         ${timestampLabel ? `<div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${timestampLabel}</div>` : ""}
       </div>
     `;
-
-    
   }).join("");
 
-  // bind accept quote buttons
-setTimeout(() => {
-  document.querySelectorAll("[data-accept-job]").forEach(btn => {
-    btn.onclick = async function () {
-      const jobId = btn.getAttribute("data-accept-job");
-      const job = portalState.jobs.find(j => j.id == jobId);
-      if (!job) return;
-
-      const ok = await handleAcceptQuote(job, portalState.profile.id);
-      if (ok) {
-        await reloadPortalData();
-      }
-    };
-  });
-
-  document.querySelectorAll("[data-upload-po]").forEach(btn => {
-    btn.onclick = async function () {
-      const jobId = btn.getAttribute("data-upload-po");
-      const job = portalState.jobs.find(j => j.id == jobId);
-      const input = document.querySelector(`[data-po-input="${jobId}"]`);
-
-      if (!job || !input || !input.files || !input.files[0]) {
-        return;
-      }
-
-      const ok = await handlePoUpload(job, portalState.profile, input.files[0]);
-      if (ok) {
-        await reloadPortalData();
-      }
-    };
-  });
-
-  document.querySelectorAll("[data-delete-po]").forEach(btn => {
-    btn.onclick = async function () {
-      const fileId = btn.getAttribute("data-id");
-      const storagePath = btn.getAttribute("data-path");
-
-      if (!fileId || !storagePath) {
-        return;
-      }
-
-      const confirmed = window.confirm("Delete this PO and upload a replacement?");
-      if (!confirmed) {
-        return;
-      }
-
-      await supabaseClient.storage
-        .from("wmas-commercial-files")
-        .remove([storagePath]);
-
-      await supabaseClient
-        .from("wmas_commercial_files")
-        .delete()
-        .eq("id", fileId);
-
-      await reloadPortalData();
-    };
-  });
-}, 100);
-
-const awaitingPoJob = visibleJobs.find(function (job) {
-  if (job.status !== "awaiting_po") return false;
-
-  const poDoc = portalState.commercialFiles.find(function (file) {
-    return file.job_id === job.id && file.document_kind === "po";
-  });
-
-  if (!poDoc) return false;
-
-  const created = new Date(poDoc.created_at).getTime();
-  return Date.now() - created < 30000;
-});
-
-if (awaitingPoJob) {
   setTimeout(function () {
-    reloadPortalData();
-  }, 32000);
-}
-  
-}
+    document.querySelectorAll("[data-accept-job]").forEach(function (btn) {
+      btn.onclick = async function () {
+        const jobId = btn.getAttribute("data-accept-job");
+        const job = portalState.jobs.find(function (j) {
+          return j.id == jobId;
+        });
+        if (!job) return;
 
+        const ok = await handleAcceptQuote(job, portalState.profile.id);
+        if (ok) {
+          await reloadPortalData();
+        }
+      };
+    });
+
+    document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
+      btn.onclick = async function () {
+        const jobId = btn.getAttribute("data-upload-po");
+        const job = portalState.jobs.find(function (j) {
+          return j.id == jobId;
+        });
+        const input = document.querySelector(`[data-po-input="${jobId}"]`);
+
+        if (!job || !input || !input.files || !input.files[0]) {
+          return;
+        }
+
+        const ok = await handlePoUpload(job, portalState.profile, input.files[0]);
+        if (ok) {
+          await reloadPortalData();
+        }
+      };
+    });
+
+    document.querySelectorAll("[data-delete-po]").forEach(function (btn) {
+      btn.onclick = async function () {
+        const fileId = btn.getAttribute("data-id");
+        const storagePath = btn.getAttribute("data-path");
+
+        if (!fileId || !storagePath) {
+          return;
+        }
+
+        const confirmed = window.confirm("Delete this PO and upload a replacement?");
+        if (!confirmed) {
+          return;
+        }
+
+        await supabaseClient.storage
+          .from("wmas-commercial-files")
+          .remove([storagePath]);
+
+        await supabaseClient
+          .from("wmas_commercial_files")
+          .delete()
+          .eq("id", fileId);
+
+        await reloadPortalData();
+      };
+    });
+  }, 100);
+
+  const awaitingPoJob = visibleJobs.find(function (job) {
+    if (job.status !== "awaiting_po") return false;
+
+    const poDoc = portalState.commercialFiles.find(function (file) {
+      return file.job_id === job.id && file.document_kind === "po";
+    });
+
+    if (!poDoc) return false;
+
+    const created = new Date(poDoc.created_at).getTime();
+    return Date.now() - created < 30000;
+  });
+
+  if (awaitingPoJob) {
+    setTimeout(function () {
+      reloadPortalData();
+    }, 32000);
+  }
+}
   function renderFiles(files) {
     const el = document.getElementById("filesCardContent");
     if (!el) {
@@ -1315,98 +1374,107 @@ async function handleAdminManageJobs() {
     }
   }
 
-  async function loadJobsForCompany() {
-    const companyId = companySelect.value;
+async function loadJobs(companyId) {
+  const { data: jobsData, error: jobsError } = await supabaseClient
+    .from("wmas_jobs")
+    .select("id, company_id, quote_id, quote_request_id, job_ref, title, status, started_at")
+    .eq("company_id", companyId)
+    .order("started_at", { ascending: false });
 
-    const { data: jobs } = await supabaseClient
-      .from("wmas_jobs")
-      .select("id, job_ref, title, status")
-      .eq("company_id", companyId)
-      .order("started_at", { ascending: false });
+  const { data: rfqData } = await supabaseClient
+    .from("wmas_quote_requests")
+    .select("id, company_id, request_ref, title, description, preferred_materials, priority, created_at, status")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
 
-    jobSelect.innerHTML = (jobs || [])
-      .map(function (job) {
-        return `<option value="${job.id}" data-status="${job.status}">
-${job.job_ref} | ${job.title} | ${job.status}
-</option>`;
-      })
-      .join("");
-
-    const selected = jobSelect.selectedOptions[0];
-    if (selected) {
-      statusSelect.value = selected.getAttribute("data-status") || "estimating";
+  if (jobsError) {
+    const el = document.getElementById("jobsCardContent");
+    if (el) {
+      el.textContent = "Unable to load jobs";
     }
+    return [];
   }
 
-  companySelect.onchange = async function () {
-    await loadJobsForCompany();
-  };
+  const rfqMap = new Map(
+    (rfqData || []).map(function (rfq) {
+      return [String(rfq.id), rfq];
+    })
+  );
 
-  jobSelect.onchange = function () {
-    const selected = jobSelect.selectedOptions[0];
-    if (selected) {
-      statusSelect.value = selected.getAttribute("data-status") || "estimating";
-    }
-  };
+  const linkedRfqIds = new Set(
+    (jobsData || [])
+      .map(function (job) {
+        return job.quote_request_id;
+      })
+      .filter(Boolean)
+  );
 
-  updateBtn.onclick = async function () {
-    const jobId = jobSelect.value;
-    const newStatus = statusSelect.value;
+  const rfqAsJobs = (rfqData || [])
+    .filter(function (rfq) {
+      return !linkedRfqIds.has(rfq.id);
+    })
+    .map(function (rfq) {
+      return {
+        id: `rfq-${rfq.id}`,
+        company_id: rfq.company_id,
+        quote_id: null,
+        quote_request_id: rfq.id,
+        job_ref: rfq.request_ref,
+        title: rfq.title,
+        status: "rfq_submitted",
+        started_at: rfq.created_at,
+        description: rfq.description,
+        preferred_materials: rfq.preferred_materials,
+        priority: rfq.priority
+      };
+    });
 
-    if (!jobId) {
-      notice.textContent = "Select a job";
-      return;
-    }
+  const enrichedJobs = (jobsData || []).map(function (job) {
+    const rfq = job.quote_request_id ? rfqMap.get(String(job.quote_request_id)) : null;
 
-    notice.textContent = "Updating job";
+    return {
+      ...job,
+      description: rfq?.description || "",
+      preferred_materials: rfq?.preferred_materials || "",
+      priority: rfq?.priority || ""
+    };
+  });
 
-    const { error } = await supabaseClient
-      .from("wmas_jobs")
-      .update({ status: newStatus })
-      .eq("id", jobId);
+  const combined = rfqAsJobs.concat(enrichedJobs).sort(function (a, b) {
+    return new Date(b.started_at) - new Date(a.started_at);
+  });
 
-    if (error) {
-      notice.textContent = error.message || "Update failed";
-      return;
-    }
+  portalState.jobs = combined;
+  return portalState.jobs;
+}
 
-    notice.textContent = "Job updated";
-    await reloadPortalData();
-    await loadJobsForCompany();
-  };
+  async function loadRfqFiles(companyId) {
+  const { data, error } = await supabaseClient
+    .from("wmas_quote_request_files")
+    .select("id, quote_request_id, title, file_name, storage_path, file_type, created_at")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
 
-  deleteBtn.onclick = async function () {
-    const jobId = jobSelect.value;
+  if (error) {
+    portalState.rfqFiles = [];
+    return [];
+  }
 
-    if (!jobId) {
-      notice.textContent = "Select a job";
-      return;
-    }
+  const filesWithUrls = await Promise.all(
+    (data || []).map(async function (file) {
+      const { data: signedData } = await supabaseClient.storage
+        .from("wmas-quote-request-files")
+        .createSignedUrl(file.storage_path, 3600);
 
-    const confirmed = window.confirm("Delete this job? This cannot be undone");
-    if (!confirmed) {
-      return;
-    }
+      return {
+        ...file,
+        downloadUrl: signedData?.signedUrl || "#"
+      };
+    })
+  );
 
-    notice.textContent = "Deleting job";
-
-    const { error } = await supabaseClient
-      .from("wmas_jobs")
-      .delete()
-      .eq("id", jobId);
-
-    if (error) {
-      notice.textContent = error.message || "Delete failed";
-      return;
-    }
-
-    notice.textContent = "Job deleted";
-    await reloadPortalData();
-    await loadJobsForCompany();
-  };
-
-  loadCompanies();
-  await loadJobsForCompany();
+  portalState.rfqFiles = filesWithUrls;
+  return portalState.rfqFiles;
 }
   
   async function handleAdminCreateJob() {
@@ -1659,6 +1727,7 @@ await supabaseClient
         : portalState.profile.company_id;
 
 const jobs = await loadJobs(companyId);
+await loadRfqFiles(companyId);
 await loadFiles(companyId);
 await loadCommercial(companyId);
 renderJobs(portalState.jobs);
