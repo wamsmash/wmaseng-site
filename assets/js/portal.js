@@ -300,13 +300,6 @@ const withinWindow = msRemaining > 0;
       </div>
     `;
 
-    if (job.status === "awaiting_po" && withinWindow) {
-      actionHtml += `
-        <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">
-          PO acceptance updates automatically in ${Math.ceil(msRemaining / 1000)} seconds
-        </div>
-      `;
-    }
     
   }).join("");
 
