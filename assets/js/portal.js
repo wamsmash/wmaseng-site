@@ -238,9 +238,10 @@ if (job.status === "awaiting_po") {
       </div>
     `;
   } else {
-    const created = new Date(poDoc.created_at).getTime();
-    const now = Date.now();
-    const withinWindow = now - created < 30000;
+const created = new Date(poDoc.created_at).getTime();
+const now = Date.now();
+const msRemaining = 30000 - (now - created);
+const withinWindow = msRemaining > 0;
 
     nextStep = withinWindow
       ? "PO uploaded, you can amend for 30 seconds"
@@ -298,6 +299,15 @@ if (job.status === "awaiting_po") {
         ${timestampLabel ? `<div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${timestampLabel}</div>` : ""}
       </div>
     `;
+
+    if (job.status === "awaiting_po" && withinWindow) {
+      actionHtml += `
+        <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">
+          PO acceptance updates automatically in ${Math.ceil(msRemaining / 1000)} seconds
+        </div>
+      `;
+    }
+    
   }).join("");
 
   // bind accept quote buttons
