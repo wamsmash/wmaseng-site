@@ -244,8 +244,14 @@ const msRemaining = 30000 - (now - created);
 const withinWindow = msRemaining > 0;
 
     nextStep = withinWindow
-      ? "Awaiting PO acceptance, you can amend for 30 seconds"
-      : "PO accepted";
+  ? "Awaiting PO acceptance, you can amend for 30 seconds"
+  : "PO accepted, reviewing live capacity and creating concept model. Thank you for your business";
+
+    if (!withinWindow) {
+        status.label = "PO accepted";
+        status.bg = "rgba(108,186,92,.14)";
+        status.border = "rgba(108,186,92,.34)";
+        status.color = "#8fda7d";
   
     actionHtml = `
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
@@ -276,6 +282,10 @@ const withinWindow = msRemaining > 0;
     if (job.status === "complete") {
       nextStep = "Payment due. Please refer to the invoice for bank transfer details";
 
+      
+}
+
+      
       actionHtml = `
         <div style="margin-top:10px">
           ${latestInvoice ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank">View Invoice</a>` : ""}
