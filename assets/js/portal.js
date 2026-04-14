@@ -250,16 +250,7 @@ if (!withinWindow) {
   status.bg = "rgba(108,186,92,.14)";
   status.border = "rgba(108,186,92,.34)";
   status.color = "#8fda7d";
-
-  // persist status to backend (only once)
-  if (job.status === "awaiting_po") {
-    supabaseClient
-      .from("wmas_jobs")
-      .update({ status: "designing" })
-      .eq("id", job.id);
-  }
 }
-
     actionHtml = `
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
