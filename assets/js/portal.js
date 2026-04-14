@@ -210,17 +210,31 @@ function renderJobs(jobs) {
 
     let nextStep = "";
     let actionHtml = "";
+    
+if (job.status === "quoted") {
+  nextStep = "Accept the issued quote to proceed";
 
-    if (job.status === "quoted") {
-      nextStep = "Accept the issued quote to proceed";
+  actionHtml = `
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
+      <button class="btn btn-primary" data-accept-job="${job.id}">Accept Quote</button>
+    </div>
+  `;
+}
 
-      actionHtml = `
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-          ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
-          <button class="btn btn-primary" data-accept-job="${job.id}">Accept Quote</button>
-        </div>
-      `;
-    }
+if (job.status === "awaiting_po") {
+  nextStep = "Upload your purchase order to secure the job";
+
+  actionHtml = `
+    <div style="margin-top:10px">
+      <input type="file" data-po-input="${job.id}" />
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" data-upload-po="${job.id}">Upload PO</button>
+        ${latestPO ? `<button class="btn" data-delete-po data-id="${latestPO.id}" data-path="${latestPO.storage_path}">Replace PO</button>` : ""}
+      </div>
+    </div>
+  `;
+}
 
 
     if (job.status === "designing") {
