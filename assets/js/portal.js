@@ -1451,6 +1451,17 @@ if (portalState.profile.role === "admin") {
         return;
       }
 
+      await supabaseClient
+  .from("wmas_messages")
+  .insert({
+    company_id: companyId,
+    sender_profile_id: portalState.profile.id,
+    sender_role: "admin",
+    subject: `${jobRow.job_ref} Quote Issued`,
+    message_body: `A quote has been issued for ${jobRow.job_ref}.\n\nPlease review the document in the Commercial section and accept to proceed.`,
+    is_system: false
+  });
+      
       if (statusEl) statusEl.textContent = "Quote issued";
 
       const quoteTitleEl = document.getElementById("adminQuoteTitle");
