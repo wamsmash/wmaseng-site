@@ -1344,10 +1344,11 @@ await supabaseClient
         ? portalState.adminTargetCompany?.id || portalState.profile.company_id
         : portalState.profile.company_id;
 
-    const jobs = await loadJobs(companyId);
-    await loadFiles(companyId);
-    await loadCommercial(companyId);
-    await loadMessages(companyId);
+const jobs = await loadJobs(companyId);
+await loadFiles(companyId);
+await loadCommercial(companyId);
+renderJobs(portalState.jobs);
+await loadMessages(companyId);
     setTimeout(() => {
   document.querySelectorAll("[data-rfq]").forEach(btn => {
     btn.onclick = async function () {
