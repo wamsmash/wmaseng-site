@@ -1465,6 +1465,58 @@ async function handleAdminManageJobs() {
   loadCompanies();
   await loadJobsForCompany();
 }
+async function loadJobs(companyId) {
+  const { data: jobsData, error: jobsError } = await supabaseClient
+    .from("wmas_jobs")
+    .select("id, company_id, quote_id, quote_request_id, job_ref, title, status, started_at")
+    .eq("company_id", companyId)
+    .order("started_at", { ascending: false });
+
+  const { data: rfqData } = await supabaseClient
+    .from("wmas_quote_requests")
+    .select("id, company_id, request_ref, title, description, preferred_materials, priority, created_at, status")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
+
+  if (jobsError) {
+    const el = document.getElementById("jobsCardContent");
+    if (el) {
+      el.textContent = "Unable to load jobs";
+    }
+    return [];
+  }
+
+  const rfqMap = new Map(
+    (rfqData || []).map(function (rfq) {
+      return [String(rfq.id), rfq];
+    })
+  );
+
+  const linkedRfqIds = new Set(
+    (jobsData || [])
+      .map(function (job) {
+        return job.quote_request_id;
+      })
+      .filter(Boolean)
+  );
+
+  const rfqAsJobs = (rfqData || [])
+    .filter(function (rfq) {
+      return !linkedRfqIds.has(rfq.id);
+    })
+    .map(function (rfq) {
+      return {
+        id: `rfq-${rfq.id}`,
+        company_id: rfq.company_id,
+        quote_id: null,
+        quote_request_id: rfq.id,
+        job_ref: rfq.request_ref,
+        title: rfq.title,
+        status: "rfq_submitted",
+        started_at: rfq.created_at,
+        description: rfq.description,
+        preferred_materials: rfq.preferred_materials,
+        priority: rfq.priority
       };
     });
 
