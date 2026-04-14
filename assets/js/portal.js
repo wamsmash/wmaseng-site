@@ -889,37 +889,47 @@ if (insertResult.error) {
       }
       return;
     }
-
     if (job.status === "awaiting_po") {
-      actionArea.innerHTML = `
-        <div class="form-group">
-          <label for="poUploadInput">Upload Purchase Order</label>
-          <input id="poUploadInput" type="file" accept=".pdf,.zip,.dwg,.dxf">
-        </div>
-        <div class="cta-row" style="margin-top:12px">
-          <button id="uploadPoBtn" class="btn btn-primary" type="button">Upload PO</button>
-        </div>
-      `;
-      statusEl.textContent = "Upload your purchase order now to secure capacity";
+      const poDoc = latestPO;
 
-      const btn = document.getElementById("uploadPoBtn");
-      const input = document.getElementById("poUploadInput");
+      if (!poDoc) {
+        nextStep = "Upload your purchase order to proceed";
 
-      if (btn && input) {
-        btn.onclick = async function () {
-          const file = input.files && input.files[0] ? input.files[0] : null;
-          const ok = await handlePoUpload(job, profile, file);
-          if (ok) {
-            await reloadFn();
-          }
-        };
+        actionHtml = `
+          <div style="margin-top:10px">
+            ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
+            <div style="margin-top:10px">
+              <input type="file" data-po-input="${job.id}" accept=".pdf,.zip,.dwg,.dxf">
+              <button class="btn btn-primary" data-upload-po="${job.id}">Upload PO</button>
+            </div>
+          </div>
+        `;
+      } else {
+        const created = new Date(poDoc.created_at).getTime();
+        const now = Date.now();
+        const msRemaining = 30000 - (now - created);
+        const withinWindow = msRemaining > 0;
+
+        nextStep = withinWindow
+          ? "Awaiting PO acceptance, you can amend for 30 seconds"
+          : "PO accepted, reviewing live capacity and creating concept model. Thank you for your business";
+
+        if (!withinWindow) {
+          status.label = "PO accepted";
+          status.bg = "rgba(108,186,92,.14)";
+          status.border = "rgba(108,186,92,.34)";
+          status.color = "#8fda7d";
+        }
+
+        actionHtml = `
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
+            <a class="btn" href="${poDoc.downloadUrl}" target="_blank">View PO</a>
+            ${withinWindow ? `<button class="btn" data-delete-po="${job.id}" data-path="${poDoc.storage_path}" data-id="${poDoc.id}">Delete PO</button>` : ""}
+          </div>
+        `;
       }
-      return;
     }
-
-    actionArea.innerHTML = "";
-    statusEl.textContent = "No current action for this job";
-  }
 
   async function loadAdminCompanies() {
     const selectEl = document.getElementById("adminCompanySelect");
