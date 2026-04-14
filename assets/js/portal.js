@@ -241,9 +241,9 @@ if (job.status === "awaiting_po") {
     const msRemaining = 30000 - (now - created);
     const withinWindow = msRemaining > 0;
 
-    nextStep = withinWindow
-      ? "Awaiting PO acceptance, you can amend for 30 seconds"
-      : "PO accepted, reviewing live capacity and creating concept model. Thank you for your business";
+nextStep = withinWindow
+  ? "Awaiting PO acceptance, you can amend for 30 seconds"
+  : "PO accepted, reviewing live capacity and creating concept model.<br>Thank you for your business";
 
     if (!withinWindow) {
       status.label = "PO accepted";
