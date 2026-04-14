@@ -784,11 +784,12 @@ async function handlePoUpload(job, profile, file) {
   const uploadResult = await supabaseClient.storage
     .from("wmas-commercial-files")
     .upload(objectPath, file, { upsert: false });
-
-  if (uploadResult.error) {
-    statusEl.textContent = uploadResult.error.message || "Upload failed";
-    return false;
-  }
+  
+if (uploadResult.error) {
+  console.error("PO storage upload error", uploadResult.error);
+  statusEl.textContent = `Storage upload failed: ${uploadResult.error.message || "Unknown error"}`;
+  return false;
+}
 
   const insertResult = await supabaseClient
     .from("wmas_commercial_files")
@@ -806,11 +807,12 @@ async function handlePoUpload(job, profile, file) {
       status: "received",
       sort_order: 20
     });
-
-  if (insertResult.error) {
-    statusEl.textContent = insertResult.error.message || "Unable to register PO";
-    return false;
-  }
+  
+if (insertResult.error) {
+  console.error("PO row insert error", insertResult.error);
+  statusEl.textContent = `PO row insert failed: ${insertResult.error.message || "Unknown error"}`;
+  return false;
+}
 
   await insertJobEvent(
     job,
