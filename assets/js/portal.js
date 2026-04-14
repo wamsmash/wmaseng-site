@@ -1134,6 +1134,7 @@ await reloadPortalData();
     renderCommercialActions(activeCommercialJob, portalState.profile, reloadPortalData);
   }
 
+  
   async function handlePortalPage() {
     const welcomeEl = document.getElementById("portalWelcome");
     const subtextEl = document.getElementById("portalSubtext");
@@ -1206,7 +1207,146 @@ portalState.profile = {
 
     bindSearch();
     await reloadPortalData();
-    await handleAdminCreateJob();
+await handleAdminCreateJob();
+
+if (portalState.profile.role === "admin") {
+  const clientForm = document.getElementById("requestQuoteCard");
+  const adminPanel = document.getElementById("adminQuotePanel");
+
+  if (clientForm) clientForm.style.display = "none";
+  if (adminPanel) adminPanel.style.display = "block";
+
+  const companySelect = document.getElementById("adminQuoteCompany");
+  const jobSelect = document.getElementById("adminQuoteJob");
+  const issueBtn = document.getElementById("adminIssueQuoteBtn");
+  const statusEl = document.getElementById("adminQuoteStatus");
+
+  async function loadAdminQuoteJobs() {
+    if (!companySelect || !jobSelect) return;
+
+    const companyId = companySelect.value;
+
+    const { data: jobs } = await supabaseClient
+      .from("wmas_jobs")
+      .select("id, job_ref, title")
+      .eq("company_id", companyId)
+      .order("started_at", { ascending: false });
+
+    jobSelect.innerHTML = (jobs || [])
+      .map(function (job) {
+        return `<option value="${job.id}">${job.job_ref} | ${job.title}</option>`;
+      })
+      .join("");
+  }
+
+  if (companySelect) {
+    companySelect.innerHTML = portalState.adminCompanies
+      .map(function (company) {
+        return `<option value="${company.id}">${company.name}</option>`;
+      })
+      .join("");
+
+    if (portalState.adminTargetCompany) {
+      companySelect.value = portalState.adminTargetCompany.id;
+    }
+
+    companySelect.onchange = async function () {
+      await loadAdminQuoteJobs();
+    };
+
+    await loadAdminQuoteJobs();
+  }
+
+  if (issueBtn) {
+    issueBtn.onclick = async function () {
+      const companyId = companySelect?.value || "";
+      const jobId = jobSelect?.value || "";
+      const title = document.getElementById("adminQuoteTitle")?.value.trim() || "";
+      const file = document.getElementById("adminQuoteFile")?.files?.[0] || null;
+
+      if (!companyId || !jobId || !file) {
+        if (statusEl) statusEl.textContent = "Select company, job and file";
+        return;
+      }
+
+      if (statusEl) statusEl.textContent = "Uploading quote";
+
+      const safeFileName = file.name.replace(/\s+/g, "_");
+
+      const { data: companyRow } = await supabaseClient
+        .from("wmas_companies")
+        .select("slug")
+        .eq("id", companyId)
+        .single();
+
+      const { data: jobRow } = await supabaseClient
+        .from("wmas_jobs")
+        .select("job_ref")
+        .eq("id", jobId)
+        .single();
+
+      if (!companyRow?.slug || !jobRow?.job_ref) {
+        if (statusEl) statusEl.textContent = "Unable to determine company or job reference";
+        return;
+      }
+
+      const objectPath = `${companyRow.slug}/${jobRow.job_ref}_${safeFileName}`;
+
+      const uploadResult = await supabaseClient.storage
+        .from("wmas-commercial-files")
+        .upload(objectPath, file, {
+          upsert: false
+        });
+
+      if (uploadResult.error) {
+        if (statusEl) statusEl.textContent = uploadResult.error.message || "Upload failed";
+        return;
+      }
+
+      const insertResult = await supabaseClient
+        .from("wmas_commercial_files")
+        .insert({
+          company_id: companyId,
+          job_id: jobId,
+          title: title || `${jobRow.job_ref} Quote`,
+          document_kind: "quote",
+          file_name: file.name,
+          storage_path: objectPath,
+          file_type: file.type || "application/pdf",
+          revision: "A",
+          visible_to_client: true,
+          uploaded_by: portalState.profile.id,
+          status: "issued",
+          sort_order: 10
+        });
+
+      if (insertResult.error) {
+        if (statusEl) statusEl.textContent = insertResult.error.message || "Unable to register quote";
+        return;
+      }
+
+      const updateResult = await supabaseClient
+        .from("wmas_jobs")
+        .update({ status: "quoted" })
+        .eq("id", jobId);
+
+      if (updateResult.error) {
+        if (statusEl) statusEl.textContent = updateResult.error.message || "Unable to update job";
+        return;
+      }
+
+      if (statusEl) statusEl.textContent = "Quote issued";
+
+      const quoteTitleEl = document.getElementById("adminQuoteTitle");
+      const quoteFileEl = document.getElementById("adminQuoteFile");
+
+      if (quoteTitleEl) quoteTitleEl.value = "";
+      if (quoteFileEl) quoteFileEl.value = "";
+
+      await reloadPortalData();
+    };
+  }
+}
 
 const sendPortalMessageBtn = document.getElementById("sendPortalMessageBtn");
 if (sendPortalMessageBtn) {
