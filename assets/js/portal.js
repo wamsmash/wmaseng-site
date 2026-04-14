@@ -414,13 +414,7 @@ if (awaitingPoJob) {
       return;
     }
 
-const filesByJob = {};
 
-(files || []).forEach(function(file) {
-  const key = file.job_id || "unassigned";
-  if (!filesByJob[key]) filesByJob[key] = [];
-  filesByJob[key].push(file);
-});
 
     
     el.innerHTML = visibleFiles.map(function (file) {
@@ -443,62 +437,78 @@ const filesByJob = {};
     }).join("");
   }
 
-  function renderCommercial(files) {
-    const el = document.getElementById("commercialCardContent");
-    if (!el) {
-      return;
+function renderCommercial(files) {
+  const el = document.getElementById("commercialCardContent");
+  if (!el) {
+    return;
+  }
+
+  if (!files || files.length === 0) {
+    el.innerHTML = "<p>No commercial documents available yet</p>";
+    return;
+  }
+
+  const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "document_kind"]);
+  const visibleFiles = portalState.searchTerm
+    ? sortedFiles.filter(function (file) {
+        return itemMatchesSearch(file, ["title", "file_name", "document_kind"]);
+      })
+    : sortedFiles;
+
+  if (visibleFiles.length === 0) {
+    el.innerHTML = "<p>No matching commercial documents</p>";
+    return;
+  }
+
+  const filesByJob = {};
+
+  visibleFiles.forEach(function (file) {
+    const key = file.job_id || "unassigned";
+    if (!filesByJob[key]) {
+      filesByJob[key] = [];
     }
+    filesByJob[key].push(file);
+  });
 
-    if (!files || files.length === 0) {
-      el.innerHTML = "<p>No commercial documents available yet</p>";
-      return;
-    }
+  el.innerHTML = Object.keys(filesByJob).map(function (jobId) {
+    const job = portalState.jobs.find(function (j) {
+      return String(j.id) === String(jobId);
+    });
 
-    const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "document_kind"]);
-    const visibleFiles = portalState.searchTerm
-      ? sortedFiles.filter(function (file) {
-          return itemMatchesSearch(file, ["title", "file_name", "document_kind"]);
-        })
-      : sortedFiles;
+    const jobTitle = job
+      ? `${job.job_ref} | ${job.title}`
+      : "General Files";
 
-    if (visibleFiles.length === 0) {
-      el.innerHTML = "<p>No matching commercial documents</p>";
-      return;
-    }
+    const jobFiles = filesByJob[jobId];
 
-el.innerHTML = Object.keys(filesByJob).map(function(jobId) {
-  const job = portalState.jobs.find(j => j.id == jobId);
-  const jobTitle = job ? `${job.job_ref} | ${job.title}` : "General Files";
+    return `
+      <div style="margin-bottom:16px">
+        <div style="font-weight:700;color:#79b2ff;margin-bottom:6px">
+          ${jobTitle}
+        </div>
 
-  const jobFiles = filesByJob[jobId];
+        ${jobFiles.map(function (file) {
+          const kindLabel = (file.document_kind || "document").toUpperCase();
+          const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
 
-  return `
-    <div style="margin-bottom:16px">
-      <div style="font-weight:700;color:#79b2ff;margin-bottom:6px">
-        ${jobTitle}
+          return `
+            <div style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06)">
+              <div style="font-weight:600;color:#edf1f4">${file.title}</div>
+              <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+                ${badgeHtml(kindLabel, "rgba(214,135,52,.28)", "rgba(214,135,52,.12)", "#f0a85a")}
+                ${badgeHtml(revisionLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
+              </div>
+              <div style="margin-top:6px;font-size:.9rem;color:#a8b2bc">${file.file_name}</div>
+              <div style="margin-top:8px">
+                <a class="btn" href="${file.downloadUrl}" target="_blank" rel="noopener noreferrer">Download</a>
+              </div>
+            </div>
+          `;
+        }).join("")}
       </div>
-
-      ${jobFiles.map(function(file) {
-        const typeLabel = getFileTypeLabel(file);
-        const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
-
-        return `
-          <div style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06)">
-            <div style="font-weight:600;color:#edf1f4">${file.title}</div>
-            <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
-              ${badgeHtml(typeLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
-              ${badgeHtml(revisionLabel, "rgba(208,165,47,.28)", "rgba(208,165,47,.12)", "#f0c75a")}
-            </div>
-            <div style="margin-top:6px;font-size:.9rem;color:#a8b2bc">${file.file_name}</div>
-            <div style="margin-top:8px">
-              <a class="btn" href="${file.downloadUrl}" target="_blank">Download</a>
-            </div>
-          </div>
-        `;
-      }).join("")}
-    </div>
-  `;
-}).join("");
+    `;
+  }).join("");
+}
 
 function renderMessages(messages) {
   const el = document.getElementById("messagesCardContent");
