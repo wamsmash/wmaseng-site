@@ -1511,7 +1511,7 @@ if (portalState.profile.role === "admin") {
 
   renderCommercialActions(activeCommercialJob, portalState.profile, reloadPortalData);
 }
-
+}
   
   async function handlePortalPage() {
     const welcomeEl = document.getElementById("portalWelcome");
