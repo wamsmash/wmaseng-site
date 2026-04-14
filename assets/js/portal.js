@@ -95,7 +95,7 @@ function getJobStatusMeta(status) {
     case "quoted":
       return { label: "Quoted", bg: "rgba(214,135,52,.14)", border: "rgba(214,135,52,.34)", color: "#f0a85a" };
     case "awaiting_po":
-      return { label: "Awaiting PO", bg: "rgba(214,135,52,.14)", border: "rgba(214,135,52,.34)", color: "#f0a85a" };
+      return { label: "Awaiting PO acceptance", bg: "rgba(214,135,52,.14)", border: "rgba(214,135,52,.34)", color: "#f0a85a" };
     case "designing":
       return { label: "Designing", bg: "rgba(65,145,255,.14)", border: "rgba(65,145,255,.34)", color: "#79b2ff" };
     case "awaiting_approval":
@@ -244,9 +244,9 @@ const msRemaining = 30000 - (now - created);
 const withinWindow = msRemaining > 0;
 
     nextStep = withinWindow
-      ? "PO uploaded, you can amend for 30 seconds"
+      ? "Awaiting PO acceptance, you can amend for 30 seconds"
       : "PO accepted";
-
+  
     actionHtml = `
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
