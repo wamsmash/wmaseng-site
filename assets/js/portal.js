@@ -1324,7 +1324,7 @@ portalState.profile = {
     bindSearch();
     await reloadPortalData();
 await handleAdminCreateJob();
-
+await handleAdminManageJobs();
 if (portalState.profile.role === "admin") {
   const clientForm = document.getElementById("requestQuoteCard");
   const adminPanel = document.getElementById("adminQuotePanel");
