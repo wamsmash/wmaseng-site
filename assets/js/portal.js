@@ -1492,13 +1492,25 @@ await reloadPortalData();
     
     updateSearchStatus();
 
-    const activeCommercialJob =
-      jobs.find(function (job) {
-        return job.status === "quoted" || job.status === "awaiting_po";
-      }) || null;
+if (portalState.profile.role === "admin") {
+  const actionArea = document.getElementById("commercialActionArea");
+  const statusEl = document.getElementById("commercialActionStatus");
 
-    renderCommercialActions(activeCommercialJob, portalState.profile, reloadPortalData);
+  if (actionArea) {
+    actionArea.innerHTML = "";
   }
+
+  if (statusEl) {
+    statusEl.textContent = "Admin commercial actions are managed from the admin panels above";
+  }
+} else {
+  const activeCommercialJob =
+    jobs.find(function (job) {
+      return job.status === "quoted" || job.status === "awaiting_po";
+    }) || null;
+
+  renderCommercialActions(activeCommercialJob, portalState.profile, reloadPortalData);
+}
 
   
   async function handlePortalPage() {
