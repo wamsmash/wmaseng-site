@@ -369,6 +369,26 @@ setTimeout(() => {
     };
   });
 }, 100);
+
+const awaitingPoJob = visibleJobs.find(function (job) {
+  if (job.status !== "awaiting_po") return false;
+
+  const poDoc = portalState.commercialFiles.find(function (file) {
+    return file.job_id === job.id && file.document_kind === "po";
+  });
+
+  if (!poDoc) return false;
+
+  const created = new Date(poDoc.created_at).getTime();
+  return Date.now() - created < 30000;
+});
+
+if (awaitingPoJob) {
+  setTimeout(function () {
+    reloadPortalData();
+  }, 32000);
+}
+  
 }
 
   function renderFiles(files) {
