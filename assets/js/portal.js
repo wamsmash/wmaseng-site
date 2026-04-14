@@ -243,7 +243,7 @@ if (job.status === "awaiting_po") {
 
 nextStep = withinWindow
   ? "Awaiting PO acceptance, you can amend for 30 seconds"
-  : "PO accepted, reviewing live capacity and creating concept model.<br>Thank you for your business";
+  : "PO accepted, reviewing live capacity and creating concept model.<br><br>Thank you for your business";
 
 if (!withinWindow) {
   status.label = "PO accepted";
@@ -784,7 +784,14 @@ const linkedRfqIds = new Set(
 
 async function handlePoUpload(job, profile, file) {
   const statusEl = document.getElementById("commercialActionStatus");
+const existingPO = portalState.commercialFiles.find(function (f) {
+  return f.job_id === job.id && f.document_kind === "po";
+});
 
+if (existingPO) {
+  if (statusEl) statusEl.textContent = "A purchase order is already uploaded for this job";
+  return false;
+}
   if (!file) {
     if (statusEl) statusEl.textContent = "Choose a PO file before uploading";
     return false;
@@ -848,7 +855,8 @@ if (insertResult.error) {
   );
 
   statusEl.textContent = "PO uploaded, awaiting WMAS review";
-  return true;
+  await reloadPortalData();
+return true;
 }
   function renderCommercialActions(job, profile, reloadFn) {
     const actionArea = document.getElementById("commercialActionArea");
@@ -1064,7 +1072,9 @@ async function handleAdminManageJobs() {
 
     jobSelect.innerHTML = (jobs || [])
       .map(function (job) {
-        return `<option value="${job.id}" data-status="${job.status}">${job.job_ref} | ${job.title}</option>`;
+        return `<option value="${job.id}" data-status="${job.status}">
+${job.job_ref} | ${job.title} | ${job.status}
+</option>`;
       })
       .join("");
 
