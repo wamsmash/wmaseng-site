@@ -234,20 +234,15 @@ function renderJobs(jobs) {
     if (job.status === "drafting_pack") {
       nextStep = "Final drawing pack is being prepared";
     }
+if (job.status === "complete") {
+  nextStep = "Payment due. Please refer to the invoice for bank transfer details";
 
-    if (job.status === "complete") {
-      nextStep = "Payment due. Please refer to the invoice for bank transfer details";
-
-      
+  actionHtml = `
+    <div style="margin-top:10px">
+      ${latestInvoice ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank">View Invoice</a>` : ""}
+    </div>
+  `;
 }
-
-      
-      actionHtml = `
-        <div style="margin-top:10px">
-          ${latestInvoice ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank">View Invoice</a>` : ""}
-        </div>
-      `;
-    }
 
     return `
       <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
