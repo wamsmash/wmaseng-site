@@ -813,6 +813,97 @@ const uploadResult = await supabaseClient.storage
     };
   }
 
+async function handleAdminCommercialFiles() {
+  const companySelect = document.getElementById("adminCommercialCompany");
+  const fileSelect = document.getElementById("adminCommercialFile");
+  const deleteBtn = document.getElementById("adminDeleteCommercialBtn");
+  const statusEl = document.getElementById("adminCommercialStatus");
+
+  if (!companySelect || !fileSelect || !deleteBtn || !statusEl) {
+    return;
+  }
+
+  function loadCompanies() {
+    companySelect.innerHTML = portalState.adminCompanies
+      .map(function (company) {
+        return `<option value="${company.id}">${company.name}</option>`;
+      })
+      .join("");
+
+    if (portalState.adminTargetCompany) {
+      companySelect.value = portalState.adminTargetCompany.id;
+    }
+  }
+
+  async function loadFilesForCompany() {
+    const companyId = companySelect.value;
+
+    const { data: files } = await supabaseClient
+      .from("wmas_commercial_files")
+      .select("id, title, file_name, storage_path")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false });
+
+    fileSelect.innerHTML = (files || [])
+      .map(function (file) {
+        return `<option value="${file.id}" data-path="${file.storage_path}">${file.title} | ${file.file_name}</option>`;
+      })
+      .join("");
+
+    if (!files || !files.length) {
+      fileSelect.innerHTML = `<option value="">No files found</option>`;
+    }
+  }
+
+  companySelect.onchange = async function () {
+    await loadFilesForCompany();
+  };
+
+  deleteBtn.onclick = async function () {
+    const fileId = fileSelect.value;
+    const selected = fileSelect.selectedOptions[0];
+    const storagePath = selected ? selected.getAttribute("data-path") : "";
+
+    if (!fileId || !storagePath) {
+      statusEl.textContent = "Select a file";
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this commercial file?");
+    if (!confirmed) {
+      return;
+    }
+
+    statusEl.textContent = "Deleting file";
+
+    const deleteStorageResult = await supabaseClient.storage
+      .from("wmas-commercial-files")
+      .remove([storagePath]);
+
+    if (deleteStorageResult.error) {
+      statusEl.textContent = deleteStorageResult.error.message || "Unable to delete file from storage";
+      return;
+    }
+
+    const deleteRowResult = await supabaseClient
+      .from("wmas_commercial_files")
+      .delete()
+      .eq("id", fileId);
+
+    if (deleteRowResult.error) {
+      statusEl.textContent = deleteRowResult.error.message || "Unable to delete file record";
+      return;
+    }
+
+    statusEl.textContent = "File deleted";
+    await reloadPortalData();
+    await loadFilesForCompany();
+  };
+
+  loadCompanies();
+  await loadFilesForCompany();
+}
+  
 async function handleAdminManageJobs() {
   const companySelect = document.getElementById("adminManageCompany");
   const jobSelect = document.getElementById("adminManageJob");
@@ -1325,6 +1416,7 @@ portalState.profile = {
     await reloadPortalData();
 await handleAdminCreateJob();
 await handleAdminManageJobs();
+await handleAdminCommercialFiles();
 if (portalState.profile.role === "admin") {
   const clientForm = document.getElementById("requestQuoteCard");
   const adminPanel = document.getElementById("adminQuotePanel");
