@@ -259,7 +259,34 @@
             <button id="adminIssueQuoteBtn" class="btn btn-primary" type="button">Issue Quote</button>
           </div>
 
-          <div id="adminQuoteStatus" class="notice" style="margin-top:14px">No action yet</div>
+<div id="adminQuoteStatus" class="notice" style="margin-top:14px">No action yet</div>
+
+<div class="notice" style="margin-top:18px"></div>
+
+<h3 style="margin-top:18px">Manage Commercial Files</h3>
+<p class="muted">Delete issued quotes, purchase orders and other commercial documents</p>
+
+<div class="form-grid" style="margin-top:14px">
+  <div class="form-group">
+    <label for="adminCommercialCompany">Client company</label>
+    <select id="adminCommercialCompany">
+      <option value="">Loading client companies</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="adminCommercialFile">Select file</label>
+    <select id="adminCommercialFile">
+      <option value="">Select a file</option>
+    </select>
+  </div>
+</div>
+
+<div class="cta-row" style="margin-top:12px">
+  <button id="adminDeleteCommercialBtn" class="btn" type="button">Delete File</button>
+</div>
+
+<div id="adminCommercialStatus" class="notice" style="margin-top:14px">No file action yet</div>
         </div>
 
         <div class="card">
