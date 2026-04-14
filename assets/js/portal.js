@@ -222,15 +222,43 @@ function renderJobs(jobs) {
       `;
     }
 
-    if (job.status === "awaiting_po") {
-      nextStep = "Upload your purchase order to secure capacity";
+if (job.status === "awaiting_po") {
+  const poDoc = latestPO;
 
-      actionHtml = `
+  if (!poDoc) {
+    nextStep = "Upload your purchase order to proceed";
+
+    actionHtml = `
+      <div style="margin-top:10px">
+        ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
         <div style="margin-top:10px">
-          ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
+          <input type="file" data-po-input="${job.id}" accept=".pdf,.zip,.dwg,.dxf">
+          <button class="btn btn-primary" data-upload-po="${job.id}">Upload PO</button>
         </div>
-      `;
-    }
+      </div>
+    `;
+  } else {
+    const created = new Date(poDoc.created_at).getTime();
+    const now = Date.now();
+    const withinWindow = now - created < 30000;
+
+    nextStep = withinWindow
+      ? "PO uploaded, you can amend for 30 seconds"
+      : "PO accepted";
+
+    actionHtml = `
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        ${latestQuote ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank">View Quote</a>` : ""}
+        <a class="btn" href="${poDoc.downloadUrl}" target="_blank">View PO</a>
+        ${
+          withinWindow
+            ? `<button class="btn" data-delete-po="${job.id}" data-path="${poDoc.storage_path}" data-id="${poDoc.id}">Delete PO</button>`
+            : ""
+        }
+      </div>
+    `;
+  }
+}
 
     if (job.status === "designing") {
       nextStep = "WMAS is progressing your order";
@@ -273,20 +301,64 @@ function renderJobs(jobs) {
   }).join("");
 
   // bind accept quote buttons
-  setTimeout(() => {
-    document.querySelectorAll("[data-accept-job]").forEach(btn => {
-      btn.onclick = async function () {
-        const jobId = btn.getAttribute("data-accept-job");
-        const job = portalState.jobs.find(j => j.id == jobId);
-        if (!job) return;
+setTimeout(() => {
+  document.querySelectorAll("[data-accept-job]").forEach(btn => {
+    btn.onclick = async function () {
+      const jobId = btn.getAttribute("data-accept-job");
+      const job = portalState.jobs.find(j => j.id == jobId);
+      if (!job) return;
 
-        const ok = await handleAcceptQuote(job, portalState.profile.id);
-        if (ok) {
-          await reloadPortalData();
-        }
-      };
-    });
-  }, 100);
+      const ok = await handleAcceptQuote(job, portalState.profile.id);
+      if (ok) {
+        await reloadPortalData();
+      }
+    };
+  });
+
+  document.querySelectorAll("[data-upload-po]").forEach(btn => {
+    btn.onclick = async function () {
+      const jobId = btn.getAttribute("data-upload-po");
+      const job = portalState.jobs.find(j => j.id == jobId);
+      const input = document.querySelector(`[data-po-input="${jobId}"]`);
+
+      if (!job || !input || !input.files || !input.files[0]) {
+        return;
+      }
+
+      const ok = await handlePoUpload(job, portalState.profile, input.files[0]);
+      if (ok) {
+        await reloadPortalData();
+      }
+    };
+  });
+
+  document.querySelectorAll("[data-delete-po]").forEach(btn => {
+    btn.onclick = async function () {
+      const fileId = btn.getAttribute("data-id");
+      const storagePath = btn.getAttribute("data-path");
+
+      if (!fileId || !storagePath) {
+        return;
+      }
+
+      const confirmed = window.confirm("Delete this PO and upload a replacement?");
+      if (!confirmed) {
+        return;
+      }
+
+      await supabaseClient.storage
+        .from("wmas-commercial-files")
+        .remove([storagePath]);
+
+      await supabaseClient
+        .from("wmas_commercial_files")
+        .delete()
+        .eq("id", fileId);
+
+      await reloadPortalData();
+    };
+  });
+}, 100);
 }
 
   function renderFiles(files) {
@@ -685,93 +757,72 @@ const linkedRfqIds = new Set(
     return true;
   }
 
-  async function handlePoUpload(job, profile, file) {
-    const statusEl = document.getElementById("commercialActionStatus");
+async function handlePoUpload(job, profile, file) {
+  const statusEl = document.getElementById("commercialActionStatus");
 
-    if (!file) {
-      if (statusEl) {
-        statusEl.textContent = "Choose a PO file before uploading";
-      }
-      return false;
-    }
-
-const safeFileName = file.name.replace(/\s+/g, "_");
-const companyFolder =
-  profile.role === "admin"
-    ? portalState.adminTargetCompany?.slug
-    : profile.company_slug;
-
-if (!companyFolder) {
-  if (statusEl) {
-    statusEl.textContent = "Unable to determine company storage folder";
+  if (!file) {
+    if (statusEl) statusEl.textContent = "Choose a PO file before uploading";
+    return false;
   }
-  return false;
+
+  const safeFileName = file.name.replace(/\s+/g, "_");
+
+  const companyFolder =
+    profile.role === "admin"
+      ? portalState.adminTargetCompany?.slug
+      : profile.company_slug;
+
+  if (!companyFolder) {
+    if (statusEl) statusEl.textContent = "Unable to determine company storage folder";
+    return false;
+  }
+
+  const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
+
+  statusEl.textContent = "Uploading purchase order";
+
+  const uploadResult = await supabaseClient.storage
+    .from("wmas-commercial-files")
+    .upload(objectPath, file, { upsert: false });
+
+  if (uploadResult.error) {
+    statusEl.textContent = uploadResult.error.message || "Upload failed";
+    return false;
+  }
+
+  const insertResult = await supabaseClient
+    .from("wmas_commercial_files")
+    .insert({
+      company_id: job.company_id,
+      job_id: job.id,
+      title: `${job.job_ref} Purchase Order`,
+      document_kind: "po",
+      file_name: file.name,
+      storage_path: objectPath,
+      file_type: file.type || "application/pdf",
+      revision: "A",
+      visible_to_client: true,
+      uploaded_by: profile.id,
+      status: "received",
+      sort_order: 20
+    });
+
+  if (insertResult.error) {
+    statusEl.textContent = insertResult.error.message || "Unable to register PO";
+    return false;
+  }
+
+  await insertJobEvent(
+    job,
+    "po_uploaded",
+    "Purchase order uploaded",
+    "Client uploaded a purchase order",
+    profile.id
+  );
+
+  statusEl.textContent = "PO uploaded, awaiting WMAS review";
+  return true;
 }
-
-const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
-
-    statusEl.textContent = "Uploading purchase order";
-
-const uploadResult = await supabaseClient.storage
-  .from("wmas-commercial-files")
-  .upload(objectPath, file, {
-    upsert: false
-  });
-
-    if (uploadResult.error) {
-      statusEl.textContent = uploadResult.error.message || "Unable to upload purchase order";
-      return false;
-    }
-
-    const insertResult = await supabaseClient
-      .from("wmas_commercial_files")
-      .insert({
-        company_id: job.company_id,
-        job_id: job.id,
-        quote_id: job.quote_id || null,
-        title: `${job.job_ref} Purchase Order`,
-        document_kind: "po",
-        file_name: file.name,
-        storage_path: objectPath,
-        file_type: file.type || "application/pdf",
-        revision: "A",
-        visible_to_client: true,
-        uploaded_by: profile.id,
-        status: "received",
-        sort_order: 20
-      });
-
-    if (insertResult.error) {
-      statusEl.textContent = insertResult.error.message || "Unable to register purchase order";
-      return false;
-    }
-
-    const updateResult = await supabaseClient
-      .from("wmas_jobs")
-      .update({
-        status: "designing",
-        po_received_at: new Date().toISOString(),
-        po_uploaded_by: profile.id
-      })
-      .eq("id", job.id);
-
-    if (updateResult.error) {
-      statusEl.textContent = updateResult.error.message || "Unable to update job after PO upload";
-      return false;
-    }
-
-    await insertJobEvent(
-      job,
-      "po_uploaded",
-      "Purchase order uploaded",
-      "Client uploaded a purchase order and the job moved into designing",
-      profile.id
-    );
-
-    statusEl.textContent = "Congratulations, your order is in progress";
-    return true;
-  }
-
   function renderCommercialActions(job, profile, reloadFn) {
     const actionArea = document.getElementById("commercialActionArea");
     const statusEl = document.getElementById("commercialActionStatus");
