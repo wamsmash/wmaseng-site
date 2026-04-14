@@ -1374,58 +1374,97 @@ async function handleAdminManageJobs() {
     }
   }
 
-async function loadJobs(companyId) {
-  const { data: jobsData, error: jobsError } = await supabaseClient
-    .from("wmas_jobs")
-    .select("id, company_id, quote_id, quote_request_id, job_ref, title, status, started_at")
-    .eq("company_id", companyId)
-    .order("started_at", { ascending: false });
+  async function loadJobsForCompany() {
+    const companyId = companySelect.value;
 
-  const { data: rfqData } = await supabaseClient
-    .from("wmas_quote_requests")
-    .select("id, company_id, request_ref, title, description, preferred_materials, priority, created_at, status")
-    .eq("company_id", companyId)
-    .order("created_at", { ascending: false });
+    const { data: jobs } = await supabaseClient
+      .from("wmas_jobs")
+      .select("id, job_ref, title, status")
+      .eq("company_id", companyId)
+      .order("started_at", { ascending: false });
 
-  if (jobsError) {
-    const el = document.getElementById("jobsCardContent");
-    if (el) {
-      el.textContent = "Unable to load jobs";
+    jobSelect.innerHTML = (jobs || [])
+      .map(function (job) {
+        return `<option value="${job.id}" data-status="${job.status}">${job.job_ref} | ${job.title} | ${job.status}</option>`;
+      })
+      .join("");
+
+    const selected = jobSelect.selectedOptions[0];
+    if (selected) {
+      statusSelect.value = selected.getAttribute("data-status") || "estimating";
     }
-    return [];
   }
 
-  const rfqMap = new Map(
-    (rfqData || []).map(function (rfq) {
-      return [String(rfq.id), rfq];
-    })
-  );
+  companySelect.onchange = async function () {
+    await loadJobsForCompany();
+  };
 
-  const linkedRfqIds = new Set(
-    (jobsData || [])
-      .map(function (job) {
-        return job.quote_request_id;
-      })
-      .filter(Boolean)
-  );
+  jobSelect.onchange = function () {
+    const selected = jobSelect.selectedOptions[0];
+    if (selected) {
+      statusSelect.value = selected.getAttribute("data-status") || "estimating";
+    }
+  };
 
-  const rfqAsJobs = (rfqData || [])
-    .filter(function (rfq) {
-      return !linkedRfqIds.has(rfq.id);
-    })
-    .map(function (rfq) {
-      return {
-        id: `rfq-${rfq.id}`,
-        company_id: rfq.company_id,
-        quote_id: null,
-        quote_request_id: rfq.id,
-        job_ref: rfq.request_ref,
-        title: rfq.title,
-        status: "rfq_submitted",
-        started_at: rfq.created_at,
-        description: rfq.description,
-        preferred_materials: rfq.preferred_materials,
-        priority: rfq.priority
+  updateBtn.onclick = async function () {
+    const jobId = jobSelect.value;
+    const newStatus = statusSelect.value;
+
+    if (!jobId) {
+      notice.textContent = "Select a job";
+      return;
+    }
+
+    notice.textContent = "Updating job";
+
+    const { error } = await supabaseClient
+      .from("wmas_jobs")
+      .update({ status: newStatus })
+      .eq("id", jobId);
+
+    if (error) {
+      notice.textContent = error.message || "Update failed";
+      return;
+    }
+
+    notice.textContent = "Job updated";
+    await reloadPortalData();
+    await loadJobsForCompany();
+  };
+
+  deleteBtn.onclick = async function () {
+    const jobId = jobSelect.value;
+
+    if (!jobId) {
+      notice.textContent = "Select a job";
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this job? This cannot be undone");
+    if (!confirmed) {
+      return;
+    }
+
+    notice.textContent = "Deleting job";
+
+    const { error } = await supabaseClient
+      .from("wmas_jobs")
+      .delete()
+      .eq("id", jobId);
+
+    if (error) {
+      notice.textContent = error.message || "Delete failed";
+      return;
+    }
+
+    notice.textContent = "Job deleted";
+    await reloadPortalData();
+    await loadJobsForCompany();
+  };
+
+  loadCompanies();
+  await loadJobsForCompany();
+}
       };
     });
 
