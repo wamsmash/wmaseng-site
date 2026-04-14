@@ -414,6 +414,15 @@ if (awaitingPoJob) {
       return;
     }
 
+const filesByJob = {};
+
+(files || []).forEach(function(file) {
+  const key = file.job_id || "unassigned";
+  if (!filesByJob[key]) filesByJob[key] = [];
+  filesByJob[key].push(file);
+});
+
+    
     el.innerHTML = visibleFiles.map(function (file) {
       const typeLabel = getFileTypeLabel(file);
       const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
@@ -457,25 +466,39 @@ if (awaitingPoJob) {
       return;
     }
 
-    el.innerHTML = visibleFiles.map(function (file) {
-      const kindLabel = (file.document_kind || "document").toUpperCase();
-      const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
+el.innerHTML = Object.keys(filesByJob).map(function(jobId) {
+  const job = portalState.jobs.find(j => j.id == jobId);
+  const jobTitle = job ? `${job.job_ref} | ${job.title}` : "General Files";
 
-      return `
-        <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
-          <div style="font-weight:700;color:#edf1f4">${file.title}</div>
-          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-            ${badgeHtml(kindLabel, "rgba(214,135,52,.28)", "rgba(214,135,52,.12)", "#f0a85a")}
-            ${badgeHtml(revisionLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
+  const jobFiles = filesByJob[jobId];
+
+  return `
+    <div style="margin-bottom:16px">
+      <div style="font-weight:700;color:#79b2ff;margin-bottom:6px">
+        ${jobTitle}
+      </div>
+
+      ${jobFiles.map(function(file) {
+        const typeLabel = getFileTypeLabel(file);
+        const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
+
+        return `
+          <div style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06)">
+            <div style="font-weight:600;color:#edf1f4">${file.title}</div>
+            <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+              ${badgeHtml(typeLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
+              ${badgeHtml(revisionLabel, "rgba(208,165,47,.28)", "rgba(208,165,47,.12)", "#f0c75a")}
+            </div>
+            <div style="margin-top:6px;font-size:.9rem;color:#a8b2bc">${file.file_name}</div>
+            <div style="margin-top:8px">
+              <a class="btn" href="${file.downloadUrl}" target="_blank">Download</a>
+            </div>
           </div>
-          <div style="margin-top:8px;font-size:.92rem;color:#a8b2bc">${file.file_name}</div>
-          <div style="margin-top:10px">
-            <a class="btn" href="${file.downloadUrl}" target="_blank" rel="noopener noreferrer">Download</a>
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
+        `;
+      }).join("")}
+    </div>
+  `;
+}).join("");
 
 function renderMessages(messages) {
   const el = document.getElementById("messagesCardContent");
