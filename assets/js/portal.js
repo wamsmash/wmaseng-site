@@ -221,13 +221,7 @@ function renderJobs(jobs) {
         </div>
       `;
     }
-if (job.status === "awaiting_po") {
-  actionArea.innerHTML = `
-    <div>No direct actions here. Use job card controls.</div>
-  `;
-  statusEl.textContent = "Purchase order stage active";
-  return;
-}
+
 
     if (job.status === "designing") {
       nextStep = "WMAS is progressing your order";
