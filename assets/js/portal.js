@@ -372,9 +372,7 @@
               </div>
             `;
           } else {
-            const created = job.po_accepted_at
-              ? new Date(job.po_accepted_at).getTime()
-              : new Date(latestPO.created_at).getTime();
+const created = new Date(job.po_accepted_at).getTime();
             const now = Date.now();
             const elapsed = now - created;
             const withinWindow = elapsed < 30000;
