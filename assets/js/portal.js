@@ -533,9 +533,10 @@ const withinWindow = msRemaining > 0;
       });
 
       if (!poDoc) return false;
-
-      const created = new Date(poDoc.created_at).getTime();
-      return Date.now() - created < 30000;
+const created = job.po_accepted_at
+  ? new Date(job.po_accepted_at).getTime()
+  : new Date(poDoc.created_at).getTime();
+return Date.now() - created < 30000;
     });
 
     if (awaitingPoJob) {
