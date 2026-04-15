@@ -372,24 +372,24 @@
               </div>
             `;
           } else {
-    const created = job.po_accepted_at
-      ? new Date(job.po_accepted_at).getTime()
-      : new Date(latestPO.created_at).getTime();
-    const now = Date.now();
-    const elapsed = now - created;
-    const withinWindow = elapsed < 30000;
-            console.log("PO timing", { created, now, elapsed });
+            const created = job.po_accepted_at
+              ? new Date(job.po_accepted_at).getTime()
+              : new Date(latestPO.created_at).getTime();
+            const now = Date.now();
+            const elapsed = now - created;
+            const withinWindow = elapsed < 30000;
 
             nextStep = withinWindow
               ? "Awaiting PO acceptance, you can amend for 30 seconds"
               : "PO accepted, reviewing live capacity and creating concept model.<br><br>Thank you for your business";
 
-if (!withinWindow) {
-  status.label = "PO accepted";
-  status.bg = "rgba(108,186,92,.14)";
-  status.border = "rgba(108,186,92,.34)";
-  status.color = "#8fda7d";
-}
+            if (!withinWindow) {
+              status.label = "PO accepted";
+              status.bg = "rgba(108,186,92,.14)";
+              status.border = "rgba(108,186,92,.34)";
+              status.color = "#8fda7d";
+            }
+
             actionHtml = `
               <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
                 ${
@@ -476,31 +476,29 @@ if (!withinWindow) {
         };
       });
 
-      document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
-        btn.onclick = async function () {
-          const jobId = btn.getAttribute("data-upload-po");
-          const job = portalState.jobs.find(function (j) {
-            return String(j.id) === String(jobId);
-          });
-          const input = document.querySelector(`[data-po-input="${jobId}"]`);
+document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
+  btn.onclick = async function () {
+    const jobId = btn.getAttribute("data-upload-po");
+    const job = portalState.jobs.find(function (j) {
+      return String(j.id) === String(jobId);
+    });
+    const input = document.querySelector(`[data-po-input="${jobId}"]`);
 
-          if (!job || !input || !input.files || !input.files[0]) {
-            return;
-          }
+    if (!job || !input || !input.files || !input.files[0]) {
+      return;
+    }
 
-          const ok = await handlePoUpload(job, portalState.profile, input.files[0]);
-          if (ok) {
-            await reloadPortalData();
-          }
-        };
-      });
+    await handlePoUpload(job, portalState.profile, input.files[0]);
+  };
+});
 
       document.querySelectorAll("[data-delete-po]").forEach(function (btn) {
         btn.onclick = async function () {
+          const jobId = btn.getAttribute("data-delete-po");
           const fileId = btn.getAttribute("data-id");
           const storagePath = btn.getAttribute("data-path");
 
-          if (!fileId || !storagePath) {
+          if (!jobId || !fileId || !storagePath) {
             return;
           }
 
@@ -520,6 +518,11 @@ if (!withinWindow) {
             .delete()
             .eq("id", fileId);
 
+          await supabaseClient
+            .from("wmas_jobs")
+            .update({ po_accepted_at: null })
+            .eq("id", jobId);
+
           await reloadPortalData();
         };
       });
@@ -533,10 +536,12 @@ if (!withinWindow) {
       });
 
       if (!poDoc) return false;
-const created = job.po_accepted_at
-  ? new Date(job.po_accepted_at).getTime()
-  : new Date(poDoc.created_at).getTime();
-return Date.now() - created < 30000;
+
+      const created = job.po_accepted_at
+        ? new Date(job.po_accepted_at).getTime()
+        : new Date(poDoc.created_at).getTime();
+
+      return Date.now() - created < 30000;
     });
 
     if (awaitingPoJob) {
