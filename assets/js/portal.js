@@ -806,17 +806,12 @@ function renderJobs(jobs) {
       <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
         <div style="font-weight:700;color:#edf1f4">${job.job_ref}</div>
         <div style="margin-top:4px;color:#edf1f4">${job.title}</div>
-
         <div style="margin-top:10px">
           ${badgeHtml(status.label, status.border, status.bg, status.color)}
         </div>
-
         ${extraInfoHtml}
-
         ${nextStep ? `<div style="margin-top:10px;font-size:.9rem;color:#a8b2bc"><strong>Next step:</strong> ${nextStep}</div>` : ""}
-
         ${actionHtml}
-
         ${timestampLabel ? `<div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${timestampLabel}</div>` : ""}
       </div>
     `;
@@ -905,206 +900,389 @@ function renderJobs(jobs) {
   }
 }
 
-  async function loadFiles(companyId) {
-    const { data, error } = await supabaseClient
-      .from("wmas_job_files")
-      .select("title, file_name, storage_path, file_type, revision, created_at")
-      .eq("company_id", companyId)
-      .eq("visible_to_client", true)
-      .order("created_at", { ascending: false });
+function renderFiles(files) {
+  const el = document.getElementById("filesCardContent");
+  if (!el) {
+    return;
+  }
 
-    if (error) {
-      const el = document.getElementById("filesCardContent");
-      if (el) {
-        el.textContent = "Unable to load files";
-      }
-      return;
-    }
+  if (!files || files.length === 0) {
+    el.innerHTML = "<p>No files available yet</p>";
+    return;
+  }
 
-    const filesWithUrls = await Promise.all(
-      (data || []).map(async function (file) {
-        const { data: signedData } = await supabaseClient.storage
-          .from("wmas-job-files")
-          .createSignedUrl(file.storage_path, 3600);
-
-        return {
-          ...file,
-          downloadUrl: signedData?.signedUrl || "#"
-        };
+  const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "revision"]);
+  const matchingFiles = portalState.searchTerm
+    ? sortedFiles.filter(function (file) {
+        return itemMatchesSearch(file, ["title", "file_name", "revision"]);
       })
-    );
+    : sortedFiles;
 
-    portalState.technicalFiles = filesWithUrls;
-    renderFiles(portalState.technicalFiles);
+  const visibleFiles = portalState.showAllFiles
+    ? matchingFiles
+    : matchingFiles.slice(0, 6);
 
-    const expandBtn = document.getElementById("filesExpandBtn");
-    if (expandBtn) {
-      expandBtn.onclick = function () {
-        portalState.showAllFiles = !portalState.showAllFiles;
-        expandBtn.textContent = portalState.showAllFiles ? "Show less" : "View all";
-        renderFiles(portalState.technicalFiles);
-      };
-    }
+  if (visibleFiles.length === 0) {
+    el.innerHTML = "<p>No matching technical files</p>";
+    return;
   }
 
-  async function loadCommercial(companyId) {
-    const { data, error } = await supabaseClient
-      .from("wmas_commercial_files")
-      .select("id, company_id, job_id, quote_id, title, document_kind, file_name, storage_path, file_type, revision, created_at")
-      .eq("company_id", companyId)
-      .eq("visible_to_client", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false });
+  el.innerHTML = visibleFiles.map(function (file) {
+    const typeLabel = getFileTypeLabel(file);
+    const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
 
-    if (error) {
-      const el = document.getElementById("commercialCardContent");
-      if (el) {
-        el.textContent = "Unable to load commercial documents";
-      }
-      return [];
-    }
+    return `
+      <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+        <div style="font-weight:700;color:#edf1f4">${file.title}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          ${badgeHtml(typeLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
+          ${badgeHtml(revisionLabel, "rgba(208,165,47,.28)", "rgba(208,165,47,.12)", "#f0c75a")}
+        </div>
+        <div style="margin-top:8px;font-size:.92rem;color:#a8b2bc">${file.file_name}</div>
+        <div style="margin-top:10px">
+          <a class="btn" href="${file.downloadUrl}" target="_blank" rel="noopener noreferrer">Download</a>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
 
-    const docsWithUrls = await Promise.all(
-      (data || []).map(async function (file) {
-        const { data: signedData } = await supabaseClient.storage
-          .from("wmas-commercial-files")
-          .createSignedUrl(file.storage_path, 3600);
+function renderCommercial(files) {
+  const el = document.getElementById("commercialCardContent");
+  if (!el) {
+    return;
+  }
 
-        return {
-          ...file,
-          downloadUrl: signedData?.signedUrl || "#"
-        };
+  if (!files || files.length === 0) {
+    el.innerHTML = "<p>No commercial documents available yet</p>";
+    return;
+  }
+
+  const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "document_kind"]);
+  const visibleFiles = portalState.searchTerm
+    ? sortedFiles.filter(function (file) {
+        return itemMatchesSearch(file, ["title", "file_name", "document_kind"]);
       })
-    );
+    : sortedFiles;
 
-    portalState.commercialFiles = docsWithUrls;
-    renderCommercial(portalState.commercialFiles);
-    return portalState.commercialFiles;
+  if (visibleFiles.length === 0) {
+    el.innerHTML = "<p>No matching commercial documents</p>";
+    return;
   }
 
-  async function loadMessages(companyId) {
-    const { data, error } = await supabaseClient
-      .from("wmas_messages")
-      .select("id, subject, message_body, sender_role, is_system, created_at")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
+  const filesByJob = {};
 
-    if (error) {
-      const el = document.getElementById("messagesCardContent");
-      if (el) {
-        el.textContent = "Unable to load messages";
-      }
-      return;
+  visibleFiles.forEach(function (file) {
+    const key = file.job_id || "unassigned";
+    if (!filesByJob[key]) {
+      filesByJob[key] = [];
     }
+    filesByJob[key].push(file);
+  });
 
-    portalState.messages = data || [];
-    renderMessages(portalState.messages);
-  }
-
-  async function sendMessage(profile) {
-    const subjectEl = document.getElementById("portalMessageSubject");
-    const bodyEl = document.getElementById("portalMessageBody");
-    const statusEl = document.getElementById("portalMessageStatus");
-
-    if (!subjectEl || !bodyEl || !statusEl) {
-      return;
-    }
-
-    const subject = subjectEl.value.trim();
-    const messageBody = bodyEl.value.trim();
-
-    if (!messageBody) {
-      statusEl.textContent = "Write a message before sending";
-      return;
-    }
-
-    const targetCompanyId =
-      profile.role === "admin"
-        ? portalState.adminTargetCompany?.id || profile.company_id
-        : profile.company_id;
-
-    statusEl.textContent = "Sending message";
-
-    const { error } = await supabaseClient
-      .from("wmas_messages")
-      .insert({
-        company_id: targetCompanyId,
-        sender_profile_id: profile.id,
-        sender_role: profile.role,
-        subject: subject || "Portal message",
-        message_body: messageBody,
-        is_system: false
-      });
-
-    if (error) {
-      statusEl.textContent = error.message || "Unable to send message";
-      return;
-    }
-
-    subjectEl.value = "";
-    bodyEl.value = "";
-    statusEl.textContent = "Message sent";
-    await loadMessages(targetCompanyId);
-  }
-
-  async function insertJobEvent(job, eventType, eventLabel, eventNotes, userId) {
-    await supabaseClient.from("wmas_job_events").insert({
-      job_id: job.id,
-      company_id: job.company_id,
-      event_type: eventType,
-      event_label: eventLabel,
-      event_notes: eventNotes,
-      acted_by: userId
+  el.innerHTML = Object.keys(filesByJob).map(function (jobId) {
+    const job = portalState.jobs.find(function (j) {
+      return String(j.id) === String(jobId);
     });
+
+    const jobTitle = job
+      ? `${job.job_ref} | ${job.title}`
+      : "General Files";
+
+    const jobFiles = filesByJob[jobId];
+
+    return `
+      <div style="margin-bottom:16px">
+        <div style="font-weight:700;color:#79b2ff;margin-bottom:6px">
+          ${jobTitle}
+        </div>
+
+        ${jobFiles.map(function (file) {
+          const kindLabel = (file.document_kind || "document").toUpperCase();
+          const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
+
+          return `
+            <div style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06)">
+              <div style="font-weight:600;color:#edf1f4">${file.title}</div>
+              <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+                ${badgeHtml(kindLabel, "rgba(214,135,52,.28)", "rgba(214,135,52,.12)", "#f0a85a")}
+                ${badgeHtml(revisionLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
+              </div>
+              <div style="margin-top:6px;font-size:.9rem;color:#a8b2bc">${file.file_name}</div>
+              <div style="margin-top:8px">
+                <a class="btn" href="${file.downloadUrl}" target="_blank" rel="noopener noreferrer">Download</a>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }).join("");
+}
+
+function renderMessages(messages) {
+  const el = document.getElementById("messagesCardContent");
+  if (!el) {
+    return;
   }
 
-  async function handleAcceptQuote(job, userId) {
-    const statusEl = document.getElementById("commercialActionStatus");
-    if (statusEl) {
-      statusEl.textContent = "Accepting quote";
-    }
+  if (!messages || messages.length === 0) {
+    el.innerHTML = "<p>No messages yet</p>";
+    return;
+  }
 
-    const { error } = await supabaseClient
-      .from("wmas_jobs")
-      .update({
-        status: "awaiting_po",
-        quote_accepted_at: new Date().toISOString(),
-        quote_accepted_by: userId
+  const sortedMessages = sortBySearchMatch(messages, ["subject", "message_body", "sender_role"]);
+  const visibleMessages = portalState.searchTerm
+    ? sortedMessages.filter(function (message) {
+        return itemMatchesSearch(message, ["subject", "message_body", "sender_role"]);
       })
-      .eq("id", job.id);
+    : sortedMessages;
 
-    if (error) {
-      if (statusEl) {
-        statusEl.textContent = error.message || "Unable to accept quote";
-      }
-      return false;
-    }
-
-    await insertJobEvent(
-      job,
-      "quote_accepted",
-      "Quote accepted",
-      "Client accepted the quote and is ready to upload a purchase order",
-      userId
-    );
-
-    if (statusEl) {
-      statusEl.textContent = "Thank you for ordering with WMAS. Next step, upload your purchase order now to secure capacity";
-    }
-
-    return true;
+  if (visibleMessages.length === 0) {
+    el.innerHTML = "<p>No matching messages</p>";
+    return;
   }
+
+  el.innerHTML = visibleMessages.map(function (message) {
+    const senderLabel = message.is_system
+      ? "System"
+      : (message.sender_role === "admin" ? "WMAS" : "Client");
+
+    let rfqId = null;
+    let requestRef = null;
+    const rawBody = message.message_body || "";
+    const subject = message.subject || "";
+
+    if (rawBody.startsWith("RFQ_ID:")) {
+      const firstLine = rawBody.split("\n")[0];
+      rfqId = firstLine.replace("RFQ_ID:", "").trim();
+    }
+
+    const subjectMatch = subject.match(/QR-\d+/);
+    if (subjectMatch) {
+      requestRef = subjectMatch[0];
+    }
+
+    const formattedBody = rawBody
+      .replace(/^RFQ_ID:.*\n/, "")
+      .replace(/\n/g, "<br>");
+
+    return `
+      <div style="padding:12px 14px 12px 0;border-top:1px solid rgba(255,255,255,.08)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-weight:700;color:#edf1f4">${subject || "Message"}</div>
+          <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
+        </div>
+        <div style="margin-top:8px;color:#d7dee5;line-height:1.7">${formattedBody}</div>
+        ${portalState.profile?.role === "admin" && (rfqId || requestRef) && !portalState.jobs.some(function (j) { return j.quote_request_id === rfqId; }) ? `<div style="margin-top:10px"><button class="btn" data-rfq="${rfqId || ""}" data-request-ref="${requestRef || ""}">Create Job from RFQ</button></div>` : ""}
+        <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function loadFiles(companyId) {
+  const { data, error } = await supabaseClient
+    .from("wmas_job_files")
+    .select("title, file_name, storage_path, file_type, revision, created_at")
+    .eq("company_id", companyId)
+    .eq("visible_to_client", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    const el = document.getElementById("filesCardContent");
+    if (el) {
+      el.textContent = "Unable to load files";
+    }
+    return;
+  }
+
+  const filesWithUrls = await Promise.all(
+    (data || []).map(async function (file) {
+      const { data: signedData } = await supabaseClient.storage
+        .from("wmas-job-files")
+        .createSignedUrl(file.storage_path, 3600);
+
+      return {
+        ...file,
+        downloadUrl: signedData?.signedUrl || "#"
+      };
+    })
+  );
+
+  portalState.technicalFiles = filesWithUrls;
+  renderFiles(portalState.technicalFiles);
+
+  const expandBtn = document.getElementById("filesExpandBtn");
+  if (expandBtn) {
+    expandBtn.onclick = function () {
+      portalState.showAllFiles = !portalState.showAllFiles;
+      expandBtn.textContent = portalState.showAllFiles ? "Show less" : "View all";
+      renderFiles(portalState.technicalFiles);
+    };
+  }
+}
+
+async function loadCommercial(companyId) {
+  const { data, error } = await supabaseClient
+    .from("wmas_commercial_files")
+    .select("id, company_id, job_id, quote_id, title, document_kind, file_name, storage_path, file_type, revision, created_at")
+    .eq("company_id", companyId)
+    .eq("visible_to_client", true)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    const el = document.getElementById("commercialCardContent");
+    if (el) {
+      el.textContent = "Unable to load commercial documents";
+    }
+    return [];
+  }
+
+  const docsWithUrls = await Promise.all(
+    (data || []).map(async function (file) {
+      const { data: signedData } = await supabaseClient.storage
+        .from("wmas-commercial-files")
+        .createSignedUrl(file.storage_path, 3600);
+
+      return {
+        ...file,
+        downloadUrl: signedData?.signedUrl || "#"
+      };
+    })
+  );
+
+  portalState.commercialFiles = docsWithUrls;
+  renderCommercial(portalState.commercialFiles);
+  return portalState.commercialFiles;
+}
+
+async function loadMessages(companyId) {
+  const { data, error } = await supabaseClient
+    .from("wmas_messages")
+    .select("id, subject, message_body, sender_role, is_system, created_at")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    const el = document.getElementById("messagesCardContent");
+    if (el) {
+      el.textContent = "Unable to load messages";
+    }
+    return;
+  }
+
+  portalState.messages = data || [];
+  renderMessages(portalState.messages);
+}
+
+async function sendMessage(profile) {
+  const subjectEl = document.getElementById("portalMessageSubject");
+  const bodyEl = document.getElementById("portalMessageBody");
+  const statusEl = document.getElementById("portalMessageStatus");
+
+  if (!subjectEl || !bodyEl || !statusEl) {
+    return;
+  }
+
+  const subject = subjectEl.value.trim();
+  const messageBody = bodyEl.value.trim();
+
+  if (!messageBody) {
+    statusEl.textContent = "Write a message before sending";
+    return;
+  }
+
+  const targetCompanyId =
+    profile.role === "admin"
+      ? portalState.adminTargetCompany?.id || profile.company_id
+      : profile.company_id;
+
+  statusEl.textContent = "Sending message";
+
+  const { error } = await supabaseClient
+    .from("wmas_messages")
+    .insert({
+      company_id: targetCompanyId,
+      sender_profile_id: profile.id,
+      sender_role: profile.role,
+      subject: subject || "Portal message",
+      message_body: messageBody,
+      is_system: false
+    });
+
+  if (error) {
+    statusEl.textContent = error.message || "Unable to send message";
+    return;
+  }
+
+  subjectEl.value = "";
+  bodyEl.value = "";
+  statusEl.textContent = "Message sent";
+  await loadMessages(targetCompanyId);
+}
+
+async function insertJobEvent(job, eventType, eventLabel, eventNotes, userId) {
+  await supabaseClient.from("wmas_job_events").insert({
+    job_id: job.id,
+    company_id: job.company_id,
+    event_type: eventType,
+    event_label: eventLabel,
+    event_notes: eventNotes,
+    acted_by: userId
+  });
+}
+
+async function handleAcceptQuote(job, userId) {
+  const statusEl = document.getElementById("commercialActionStatus");
+  if (statusEl) {
+    statusEl.textContent = "Accepting quote";
+  }
+
+  const { error } = await supabaseClient
+    .from("wmas_jobs")
+    .update({
+      status: "awaiting_po",
+      quote_accepted_at: new Date().toISOString(),
+      quote_accepted_by: userId
+    })
+    .eq("id", job.id);
+
+  if (error) {
+    if (statusEl) {
+      statusEl.textContent = error.message || "Unable to accept quote";
+    }
+    return false;
+  }
+
+  await insertJobEvent(
+    job,
+    "quote_accepted",
+    "Quote accepted",
+    "Client accepted the quote and is ready to upload a purchase order",
+    userId
+  );
+
+  if (statusEl) {
+    statusEl.textContent = "Thank you for ordering with WMAS. Next step, upload your purchase order now to secure capacity";
+  }
+
+  return true;
+}
 
 async function handlePoUpload(job, profile, file) {
   const statusEl = document.getElementById("commercialActionStatus");
-const existingPO = portalState.commercialFiles.find(function (f) {
-  return f.job_id === job.id && f.document_kind === "po";
-});
 
-if (existingPO) {
-  if (statusEl) statusEl.textContent = "A purchase order is already uploaded for this job";
-  return false;
-}
+  const existingPO = portalState.commercialFiles.find(function (f) {
+    return f.job_id === job.id && f.document_kind === "po";
+  });
+
+  if (existingPO) {
+    if (statusEl) statusEl.textContent = "A purchase order is already uploaded for this job";
+    return false;
+  }
+
   if (!file) {
     if (statusEl) statusEl.textContent = "Choose a PO file before uploading";
     return false;
@@ -1124,17 +1302,21 @@ if (existingPO) {
 
   const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
 
-  statusEl.textContent = "Uploading purchase order";
+  if (statusEl) {
+    statusEl.textContent = "Uploading purchase order";
+  }
 
   const uploadResult = await supabaseClient.storage
     .from("wmas-commercial-files")
     .upload(objectPath, file, { upsert: false });
-  
-if (uploadResult.error) {
-  console.error("PO storage upload error", uploadResult.error);
-  statusEl.textContent = `Storage upload failed: ${uploadResult.error.message || "Unknown error"}`;
-  return false;
-}
+
+  if (uploadResult.error) {
+    console.error("PO storage upload error", uploadResult.error);
+    if (statusEl) {
+      statusEl.textContent = `Storage upload failed: ${uploadResult.error.message || "Unknown error"}`;
+    }
+    return false;
+  }
 
   const insertResult = await supabaseClient
     .from("wmas_commercial_files")
@@ -1152,12 +1334,14 @@ if (uploadResult.error) {
       status: "received",
       sort_order: 20
     });
-  
-if (insertResult.error) {
-  console.error("PO row insert error", insertResult.error);
-  statusEl.textContent = `PO row insert failed: ${insertResult.error.message || "Unknown error"}`;
-  return false;
-}
+
+  if (insertResult.error) {
+    console.error("PO row insert error", insertResult.error);
+    if (statusEl) {
+      statusEl.textContent = `PO row insert failed: ${insertResult.error.message || "Unknown error"}`;
+    }
+    return false;
+  }
 
   await insertJobEvent(
     job,
@@ -1167,97 +1351,102 @@ if (insertResult.error) {
     profile.id
   );
 
-  statusEl.textContent = "PO uploaded, awaiting WMAS review";
+  if (statusEl) {
+    statusEl.textContent = "PO uploaded, awaiting WMAS review";
+  }
+
   await reloadPortalData();
-return true;
+  return true;
 }
-  function renderCommercialActions(job, profile, reloadFn) {
-    const actionArea = document.getElementById("commercialActionArea");
-    const statusEl = document.getElementById("commercialActionStatus");
 
-    if (!actionArea || !statusEl) {
-      return;
-    }
+function renderCommercialActions(job, profile, reloadFn) {
+  const actionArea = document.getElementById("commercialActionArea");
+  const statusEl = document.getElementById("commercialActionStatus");
 
-    if (!job) {
-      actionArea.innerHTML = "";
-      statusEl.textContent = "No current action";
-      return;
-    }
-if (job.status === "quoted") {
-  actionArea.innerHTML = `
-    <button id="acceptQuoteBtn" class="btn btn-primary" type="button">Accept Quote</button>
-  `;
-  statusEl.textContent = "This quote is ready for acceptance";
-
-  const btn = document.getElementById("acceptQuoteBtn");
-  if (btn) {
-    btn.onclick = async function () {
-      const ok = await handleAcceptQuote(job, profile.id);
-      if (ok) {
-        await reloadFn();
-      }
-    };
+  if (!actionArea || !statusEl) {
+    return;
   }
-}
 
-return;
-}
-
-
-
-  async function loadAdminCompanies() {
-    const selectEl = document.getElementById("adminCompanySelect");
-    if (!selectEl) {
-      return;
-    }
-
-    const { data, error } = await supabaseClient
-      .from("wmas_companies")
-      .select("id, name, slug")
-      .neq("slug", "wmas-engineering")
-      .eq("is_active", true)
-      .order("name", { ascending: true });
-
-    if (error) {
-      selectEl.innerHTML = `<option value="">Unable to load client companies</option>`;
-      portalState.adminCompanies = [];
-      portalState.adminTargetCompany = null;
-      return;
-    }
-
-    portalState.adminCompanies = data || [];
-
-    if (!portalState.adminCompanies.length) {
-      selectEl.innerHTML = `<option value="">No client companies available</option>`;
-      portalState.adminTargetCompany = null;
-      return;
-    }
-
-    selectEl.innerHTML = portalState.adminCompanies
-      .map(function (company) {
-        return `<option value="${company.id}">${company.name}</option>`;
-      })
-      .join("");
-
-    portalState.adminTargetCompany = portalState.adminCompanies[0];
-    selectEl.value = portalState.adminTargetCompany.id;
-
-    selectEl.onchange = async function () {
-      const selectedId = selectEl.value;
-      portalState.adminTargetCompany =
-        portalState.adminCompanies.find(function (company) {
-          return company.id === selectedId;
-        }) || null;
-
-      const subtextEl = document.getElementById("portalSubtext");
-      if (subtextEl && portalState.adminTargetCompany) {
-        subtextEl.textContent = `Admin access is active. Current target company: ${portalState.adminTargetCompany.name}`;
-      }
-
-      await reloadPortalData();
-    };
+  if (!job) {
+    actionArea.innerHTML = "";
+    statusEl.textContent = "No current action";
+    return;
   }
+
+  if (job.status === "quoted") {
+    actionArea.innerHTML = `
+      <button id="acceptQuoteBtn" class="btn btn-primary" type="button">Accept Quote</button>
+    `;
+    statusEl.textContent = "This quote is ready for acceptance";
+
+    const btn = document.getElementById("acceptQuoteBtn");
+    if (btn) {
+      btn.onclick = async function () {
+        const ok = await handleAcceptQuote(job, profile.id);
+        if (ok) {
+          await reloadFn();
+        }
+      };
+    }
+    return;
+  }
+
+  actionArea.innerHTML = "";
+  statusEl.textContent = "No current action";
+}
+
+async function loadAdminCompanies() {
+  const selectEl = document.getElementById("adminCompanySelect");
+  if (!selectEl) {
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("wmas_companies")
+    .select("id, name, slug")
+    .neq("slug", "wmas-engineering")
+    .eq("is_active", true)
+    .order("name", { ascending: true });
+
+  if (error) {
+    selectEl.innerHTML = `<option value="">Unable to load client companies</option>`;
+    portalState.adminCompanies = [];
+    portalState.adminTargetCompany = null;
+    return;
+  }
+
+  portalState.adminCompanies = data || [];
+
+  if (!portalState.adminCompanies.length) {
+    selectEl.innerHTML = `<option value="">No client companies available</option>`;
+    portalState.adminTargetCompany = null;
+    return;
+  }
+
+  selectEl.innerHTML = portalState.adminCompanies
+    .map(function (company) {
+      return `<option value="${company.id}">${company.name}</option>`;
+    })
+    .join("");
+
+  portalState.adminTargetCompany = portalState.adminCompanies[0];
+  selectEl.value = portalState.adminTargetCompany.id;
+
+  selectEl.onchange = async function () {
+    const selectedId = selectEl.value;
+    portalState.adminTargetCompany =
+      portalState.adminCompanies.find(function (company) {
+        return company.id === selectedId;
+      }) || null;
+
+    const subtextEl = document.getElementById("portalSubtext");
+    if (subtextEl && portalState.adminTargetCompany) {
+      subtextEl.textContent = `Admin access is active. Current target company: ${portalState.adminTargetCompany.name}`;
+    }
+
+    await reloadPortalData();
+  };
+}
 
 async function handleAdminCommercialFiles() {
   const companySelect = document.getElementById("adminCommercialCompany");
@@ -1349,7 +1538,7 @@ async function handleAdminCommercialFiles() {
   loadCompanies();
   await loadFilesForCompany();
 }
-  
+
 async function handleAdminManageJobs() {
   const companySelect = document.getElementById("adminManageCompany");
   const jobSelect = document.getElementById("adminManageJob");
@@ -1465,6 +1654,7 @@ async function handleAdminManageJobs() {
   loadCompanies();
   await loadJobsForCompany();
 }
+
 async function loadJobs(companyId) {
   const { data: jobsData, error: jobsError } = await supabaseClient
     .from("wmas_jobs")
@@ -1539,7 +1729,7 @@ async function loadJobs(companyId) {
   return portalState.jobs;
 }
 
-  async function loadRfqFiles(companyId) {
+async function loadRfqFiles(companyId) {
   const { data, error } = await supabaseClient
     .from("wmas_quote_request_files")
     .select("id, quote_request_id, title, file_name, storage_path, file_type, created_at")
@@ -1567,341 +1757,337 @@ async function loadJobs(companyId) {
   portalState.rfqFiles = filesWithUrls;
   return portalState.rfqFiles;
 }
-  
-  async function handleAdminCreateJob() {
-    const btn = document.getElementById("adminCreateJobBtn");
-    const notice = document.getElementById("adminJobStatusNotice");
-    const refEl = document.getElementById("adminJobRef");
-    const titleEl = document.getElementById("adminJobTitle");
-    const statusEl = document.getElementById("adminJobStatus");
 
-    if (!btn || !notice || !refEl || !titleEl || !statusEl) {
-      return;
-    }
+async function handleAdminCreateJob() {
+  const btn = document.getElementById("adminCreateJobBtn");
+  const notice = document.getElementById("adminJobStatusNotice");
+  const refEl = document.getElementById("adminJobRef");
+  const titleEl = document.getElementById("adminJobTitle");
+  const statusEl = document.getElementById("adminJobStatus");
 
-    if (!portalState.profile || portalState.profile.role !== "admin") {
-      return;
-    }
-
-    btn.onclick = async function () {
-      const jobRef = refEl.value.trim();
-      const title = titleEl.value.trim();
-      const status = statusEl.value;
-
-      if (!jobRef || !title) {
-        notice.textContent = "Enter a job reference and job title";
-        return;
-      }
-
-      if (!portalState.adminTargetCompany) {
-        notice.textContent = "Select a client company first";
-        return;
-      }
-
-      notice.textContent = "Creating job";
-
-      const { error } = await supabaseClient
-        .from("wmas_jobs")
-.insert({
-  company_id: portalState.adminTargetCompany.id,
-  job_ref: jobRef,
-  title: title,
-  description: "Portal created job",
-  status: status,
-  quote_request_id: null,
-  created_by: portalState.profile.id,
-  started_at: new Date().toISOString()
-});
-
-
-      
-      if (error) {
-        notice.textContent = error.message || "Unable to create job";
-        return;
-      }
-
-      notice.textContent = `Job created for ${portalState.adminTargetCompany.name}`;
-      refEl.value = "";
-      titleEl.value = "";
-      statusEl.value = "estimating";
-
-      await reloadPortalData();
-    };
+  if (!btn || !notice || !refEl || !titleEl || !statusEl) {
+    return;
   }
 
-  async function submitQuoteRequest() {
-    const statusEl = document.getElementById("quoteRequestStatus");
-    const titleEl = document.getElementById("quoteRequestTitle");
-    const descriptionEl = document.getElementById("quoteRequestDescription");
-    const materialsEl = document.getElementById("quoteRequestMaterials");
-    const priorityEl = document.getElementById("quoteRequestPriority");
-    const filesEl = document.getElementById("quoteRequestFiles");
+  if (!portalState.profile || portalState.profile.role !== "admin") {
+    return;
+  }
 
-    if (!statusEl || !titleEl || !descriptionEl || !materialsEl || !priorityEl || !filesEl) {
-      return;
-    }
-
-    if (!portalState.profile || portalState.profile.role !== "client") {
-      statusEl.textContent = "Quote requests are currently client actions only";
-      return;
-    }
-
+  btn.onclick = async function () {
+    const jobRef = refEl.value.trim();
     const title = titleEl.value.trim();
-    const description = descriptionEl.value.trim();
-    const preferredMaterials = materialsEl.value.trim();
-    const priority = priorityEl.value;
-    const files = Array.from(filesEl.files || []);
+    const status = statusEl.value;
 
-    if (!title) {
-      statusEl.textContent = "Enter a project title";
+    if (!jobRef || !title) {
+      notice.textContent = "Enter a job reference and job title";
       return;
     }
 
-    statusEl.textContent = "Submitting quote request";
+    if (!portalState.adminTargetCompany) {
+      notice.textContent = "Select a client company first";
+      return;
+    }
 
-    const requestRef = `QR-${Date.now()}`;
+    notice.textContent = "Creating job";
 
-    const { data: requestRow, error: requestError } = await supabaseClient
-      .from("wmas_quote_requests")
+    const { error } = await supabaseClient
+      .from("wmas_jobs")
       .insert({
-        company_id: portalState.profile.company_id,
-        requester_profile_id: portalState.profile.id,
-        request_ref: requestRef,
+        company_id: portalState.adminTargetCompany.id,
+        job_ref: jobRef,
         title: title,
-        description: description,
-        preferred_materials: preferredMaterials,
-        priority: priority,
-        status: "rfq_submitted",
-        admin_alert: true
+        description: "Portal created job",
+        status: status,
+        quote_request_id: null,
+        created_by: portalState.profile.id,
+        started_at: new Date().toISOString()
+      });
+
+    if (error) {
+      notice.textContent = error.message || "Unable to create job";
+      return;
+    }
+
+    notice.textContent = `Job created for ${portalState.adminTargetCompany.name}`;
+    refEl.value = "";
+    titleEl.value = "";
+    statusEl.value = "estimating";
+
+    await reloadPortalData();
+  };
+}
+
+async function submitQuoteRequest() {
+  const statusEl = document.getElementById("quoteRequestStatus");
+  const titleEl = document.getElementById("quoteRequestTitle");
+  const descriptionEl = document.getElementById("quoteRequestDescription");
+  const materialsEl = document.getElementById("quoteRequestMaterials");
+  const priorityEl = document.getElementById("quoteRequestPriority");
+  const filesEl = document.getElementById("quoteRequestFiles");
+
+  if (!statusEl || !titleEl || !descriptionEl || !materialsEl || !priorityEl || !filesEl) {
+    return;
+  }
+
+  if (!portalState.profile || portalState.profile.role !== "client") {
+    statusEl.textContent = "Quote requests are currently client actions only";
+    return;
+  }
+
+  const title = titleEl.value.trim();
+  const description = descriptionEl.value.trim();
+  const preferredMaterials = materialsEl.value.trim();
+  const priority = priorityEl.value;
+  const files = Array.from(filesEl.files || []);
+
+  if (!title) {
+    statusEl.textContent = "Enter a project title";
+    return;
+  }
+
+  statusEl.textContent = "Submitting quote request";
+
+  const requestRef = `QR-${Date.now()}`;
+
+  const { data: requestRow, error: requestError } = await supabaseClient
+    .from("wmas_quote_requests")
+    .insert({
+      company_id: portalState.profile.company_id,
+      requester_profile_id: portalState.profile.id,
+      request_ref: requestRef,
+      title: title,
+      description: description,
+      preferred_materials: preferredMaterials,
+      priority: priority,
+      status: "rfq_submitted",
+      admin_alert: true
+    })
+    .select("id")
+    .single();
+
+  if (requestError || !requestRow) {
+    statusEl.textContent = requestError?.message || "Unable to create quote request";
+    return;
+  }
+
+  const quoteRequestId = requestRow.id;
+  const companyFolder = portalState.profile.company_slug;
+  const uploadedPaths = [];
+  const insertedFileIds = [];
+
+  if (!companyFolder) {
+    statusEl.textContent = "Unable to determine company storage folder";
+    return;
+  }
+
+  for (const file of files) {
+    const safeFileName = file.name.replace(/\s+/g, "_");
+    const objectPath = `${companyFolder}/${requestRef}_${safeFileName}`;
+
+    const uploadResult = await supabaseClient.storage
+      .from("wmas-quote-request-files")
+      .upload(objectPath, file, { upsert: false });
+
+    if (uploadResult.error) {
+      if (insertedFileIds.length) {
+        await supabaseClient
+          .from("wmas_quote_request_files")
+          .delete()
+          .in("id", insertedFileIds);
+      }
+
+      if (uploadedPaths.length) {
+        await supabaseClient.storage
+          .from("wmas-quote-request-files")
+          .remove(uploadedPaths);
+      }
+
+      await supabaseClient
+        .from("wmas_quote_requests")
+        .delete()
+        .eq("id", quoteRequestId);
+
+      statusEl.textContent = uploadResult.error.message || "A file upload failed";
+      return;
+    }
+
+    uploadedPaths.push(objectPath);
+
+    const fileInsert = await supabaseClient
+      .from("wmas_quote_request_files")
+      .insert({
+        quote_request_id: requestRow.id,
+        company_id: portalState.profile.company_id,
+        title: file.name,
+        file_name: file.name,
+        storage_path: objectPath,
+        file_type: file.type || "application/octet-stream",
+        uploaded_by: portalState.profile.id
       })
       .select("id")
       .single();
 
-if (requestError || !requestRow) {
-  statusEl.textContent = requestError?.message || "Unable to create quote request";
-  return;
-}
+    if (fileInsert.error) {
+      if (uploadedPaths.length) {
+        await supabaseClient.storage
+          .from("wmas-quote-request-files")
+          .remove(uploadedPaths);
+      }
 
-const quoteRequestId = requestRow.id;
-const companyFolder = portalState.profile.company_slug;
-const uploadedPaths = [];
-const insertedFileIds = [];
+      if (insertedFileIds.length) {
+        await supabaseClient
+          .from("wmas_quote_request_files")
+          .delete()
+          .in("id", insertedFileIds);
+      }
 
-if (!companyFolder) {
-  statusEl.textContent = "Unable to determine company storage folder";
-  return;
-}
+      await supabaseClient
+        .from("wmas_quote_requests")
+        .delete()
+        .eq("id", quoteRequestId);
 
-    for (const file of files) {
-      const safeFileName = file.name.replace(/\s+/g, "_");
-      const objectPath = `${companyFolder}/${requestRef}_${safeFileName}`;
-
-const uploadResult = await supabaseClient.storage
-  .from("wmas-quote-request-files")
-  .upload(objectPath, file, {
-    upsert: false
-  });
-
-if (uploadResult.error) {
-  if (insertedFileIds.length) {
-    await supabaseClient
-      .from("wmas_quote_request_files")
-      .delete()
-      .in("id", insertedFileIds);
-  }
-
-  if (uploadedPaths.length) {
-    await supabaseClient.storage
-      .from("wmas-quote-request-files")
-      .remove(uploadedPaths);
-  }
-
-  await supabaseClient
-    .from("wmas_quote_requests")
-    .delete()
-    .eq("id", quoteRequestId);
-
-  statusEl.textContent = uploadResult.error.message || "A file upload failed";
-  return;
-}
-
-uploadedPaths.push(objectPath);
-
-      
-const fileInsert = await supabaseClient
-  .from("wmas_quote_request_files")
-  .insert({
-    quote_request_id: requestRow.id,
-    company_id: portalState.profile.company_id,
-    title: file.name,
-    file_name: file.name,
-    storage_path: objectPath,
-    file_type: file.type || "application/octet-stream",
-    uploaded_by: portalState.profile.id
-  })
-  .select("id")
-  .single();
-      
-
-if (fileInsert.error) {
-  if (uploadedPaths.length) {
-    await supabaseClient.storage
-      .from("wmas-quote-request-files")
-      .remove(uploadedPaths);
-  }
-
-  if (insertedFileIds.length) {
-    await supabaseClient
-      .from("wmas_quote_request_files")
-      .delete()
-      .in("id", insertedFileIds);
-  }
-
-  await supabaseClient
-    .from("wmas_quote_requests")
-    .delete()
-    .eq("id", quoteRequestId);
-
-  statusEl.textContent = fileInsert.error.message || "Unable to register an uploaded file";
-  return;
-}
-
-insertedFileIds.push(fileInsert.data.id);
-    }
-
-    titleEl.value = "";
-    descriptionEl.value = "";
-    materialsEl.value = "";
-    priorityEl.value = "normal";
-    filesEl.value = "";
-
-    statusEl.textContent = `Quote request submitted: ${requestRef}`;
-
-await supabaseClient
-  .from("wmas_messages")
-  .insert({
-    company_id: portalState.profile.company_id,
-    sender_profile_id: portalState.profile.id,
-    sender_role: "client",
-    subject: `${requestRef} | ${title}`,
-    message_body: `RFQ_ID:${quoteRequestId}\nA new quote request has been submitted.\n\nReference: ${requestRef}\nTitle: ${title}\nPriority: ${priority}${preferredMaterials ? `\nPreferred materials: ${preferredMaterials}` : ""}`,
-    is_system: false
-  });
-
-    await loadMessages(portalState.profile.company_id);
-  }
-
-  function bindSearch() {
-    const input = document.getElementById("portalSearchInput");
-    if (!input) {
+      statusEl.textContent = fileInsert.error.message || "Unable to register an uploaded file";
       return;
     }
 
-    input.addEventListener("input", function () {
-      portalState.searchTerm = input.value || "";
-      updateSearchStatus();
-      renderJobs(portalState.jobs);
-      renderFiles(portalState.technicalFiles);
-      renderCommercial(portalState.commercialFiles);
-      renderMessages(portalState.messages);
+    insertedFileIds.push(fileInsert.data.id);
+  }
+
+  titleEl.value = "";
+  descriptionEl.value = "";
+  materialsEl.value = "";
+  priorityEl.value = "normal";
+  filesEl.value = "";
+
+  statusEl.textContent = `Quote request submitted: ${requestRef}`;
+
+  await supabaseClient
+    .from("wmas_messages")
+    .insert({
+      company_id: portalState.profile.company_id,
+      sender_profile_id: portalState.profile.id,
+      sender_role: "client",
+      subject: `${requestRef} | ${title}`,
+      message_body: `RFQ_ID:${quoteRequestId}\nA new quote request has been submitted.\n\nReference: ${requestRef}\nTitle: ${title}\nPriority: ${priority}${preferredMaterials ? `\nPreferred materials: ${preferredMaterials}` : ""}`,
+      is_system: false
     });
+
+  await loadMessages(portalState.profile.company_id);
+}
+
+function bindSearch() {
+  const input = document.getElementById("portalSearchInput");
+  if (!input) {
+    return;
   }
 
-  async function reloadPortalData() {
-    if (!portalState.profile) {
-      return;
+  input.addEventListener("input", function () {
+    portalState.searchTerm = input.value || "";
+    updateSearchStatus();
+    renderJobs(portalState.jobs);
+    renderFiles(portalState.technicalFiles);
+    renderCommercial(portalState.commercialFiles);
+    renderMessages(portalState.messages);
+  });
+}
+
+async function reloadPortalData() {
+  if (!portalState.profile) {
+    return;
+  }
+
+  const companyId =
+    portalState.profile.role === "admin"
+      ? portalState.adminTargetCompany?.id || portalState.profile.company_id
+      : portalState.profile.company_id;
+
+  const jobs = await loadJobs(companyId);
+  await loadRfqFiles(companyId);
+  await loadFiles(companyId);
+  await loadCommercial(companyId);
+  renderJobs(portalState.jobs);
+  await loadMessages(companyId);
+
+  setTimeout(function () {
+    document.querySelectorAll("[data-rfq]").forEach(function (btn) {
+      btn.onclick = async function () {
+        let rfqId = btn.getAttribute("data-rfq");
+        const requestRef = btn.getAttribute("data-request-ref");
+
+        let rfqQuery = supabaseClient
+          .from("wmas_quote_requests")
+          .select("id, title, company_id, request_ref");
+
+        if (rfqId) {
+          rfqQuery = rfqQuery.eq("id", rfqId);
+        } else {
+          rfqQuery = rfqQuery.eq("request_ref", requestRef);
+        }
+
+        const { data: rfq } = await rfqQuery.single();
+
+        if (!rfq) return;
+
+        btn.disabled = true;
+        btn.textContent = "Creating...";
+
+        const { data: existingJob } = await supabaseClient
+          .from("wmas_jobs")
+          .select("id")
+          .eq("quote_request_id", rfq.id)
+          .maybeSingle();
+
+        if (existingJob) {
+          await reloadPortalData();
+          return;
+        }
+
+        const jobRef = `WM${Date.now().toString().slice(-6)}`;
+
+        await supabaseClient
+          .from("wmas_jobs")
+          .insert({
+            company_id: rfq.company_id,
+            job_ref: jobRef,
+            title: rfq.title,
+            description: "Created from RFQ",
+            status: "estimating",
+            quote_request_id: rfq.id,
+            created_by: portalState.profile.id,
+            started_at: new Date().toISOString()
+          });
+
+        await supabaseClient
+          .from("wmas_quote_requests")
+          .update({ status: "in_progress" })
+          .eq("id", rfq.id);
+
+        await reloadPortalData();
+      };
+    });
+  }, 300);
+
+  updateSearchStatus();
+
+  if (portalState.profile.role === "admin") {
+    const actionArea = document.getElementById("commercialActionArea");
+    const statusEl = document.getElementById("commercialActionStatus");
+
+    if (actionArea) {
+      actionArea.innerHTML = "";
     }
 
-    const companyId =
-      portalState.profile.role === "admin"
-        ? portalState.adminTargetCompany?.id || portalState.profile.company_id
-        : portalState.profile.company_id;
+    if (statusEl) {
+      statusEl.textContent = "Admin commercial actions are managed from the admin panels above";
+    }
+  } else {
+    const activeCommercialJob =
+      jobs.find(function (job) {
+        return job.status === "quoted" || job.status === "awaiting_po";
+      }) || null;
 
-const jobs = await loadJobs(companyId);
-await loadRfqFiles(companyId);
-await loadFiles(companyId);
-await loadCommercial(companyId);
-renderJobs(portalState.jobs);
-await loadMessages(companyId);
-    setTimeout(() => {
-  document.querySelectorAll("[data-rfq]").forEach(btn => {
-    btn.onclick = async function () {
-      let rfqId = btn.getAttribute("data-rfq");
-const requestRef = btn.getAttribute("data-request-ref");
-let rfqQuery = supabaseClient
-  .from("wmas_quote_requests")
-  .select("id, title, company_id, request_ref");
-
-if (rfqId) {
-  rfqQuery = rfqQuery.eq("id", rfqId);
-} else {
-  rfqQuery = rfqQuery.eq("request_ref", requestRef);
-}
-
-const { data: rfq } = await rfqQuery.single();
-
-if (!rfq) return;
-
-btn.disabled = true;
-btn.textContent = "Creating...";
-
-const { data: existingJob } = await supabaseClient
-  .from("wmas_jobs")
-  .select("id")
-  .eq("quote_request_id", rfq.id)
-  .maybeSingle();
-
-if (existingJob) {
-  await reloadPortalData();
-  return;
-}
-
-const jobRef = `WM${Date.now().toString().slice(-6)}`;
-
-await supabaseClient
-  .from("wmas_jobs")
-  .insert({
-    company_id: rfq.company_id,
-    job_ref: jobRef,
-    title: rfq.title,
-    description: "Created from RFQ",
-    status: "estimating",
-    quote_request_id: rfq.id,
-    created_by: portalState.profile.id,
-    started_at: new Date().toISOString()
-  });
-
-await supabaseClient
-  .from("wmas_quote_requests")
-  .update({ status: "in_progress" })
-  .eq("id", rfq.id);
-
-await reloadPortalData();
-    };
-  });
-}, 300);
-    
-    updateSearchStatus();
-
-if (portalState.profile.role === "admin") {
-  const actionArea = document.getElementById("commercialActionArea");
-  const statusEl = document.getElementById("commercialActionStatus");
-
-  if (actionArea) {
-    actionArea.innerHTML = "";
+    renderCommercialActions(activeCommercialJob, portalState.profile, reloadPortalData);
   }
-
-  if (statusEl) {
-    statusEl.textContent = "Admin commercial actions are managed from the admin panels above";
-  }
-} else {
-  const activeCommercialJob =
-    jobs.find(function (job) {
-      return job.status === "quoted" || job.status === "awaiting_po";
-    }) || null;
-
-  renderCommercialActions(activeCommercialJob, portalState.profile, reloadPortalData);
-}
 }
   
   async function handlePortalPage() {
