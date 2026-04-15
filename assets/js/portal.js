@@ -372,12 +372,12 @@
               </div>
             `;
           } else {
-            const created = job.po_accepted_at
-              ? new Date(job.po_accepted_at).getTime()
-              : new Date(latestPO.created_at).getTime();
-            const now = Date.now();
-            const msRemaining = 30000 - (now - created);
-            const withinWindow = msRemaining > 0;
+const created = job.po_accepted_at
+  ? new Date(job.po_accepted_at).getTime()
+  : new Date(latestPO.created_at).getTime();
+const now = Date.now();
+const msRemaining = 30000 - (now - created);
+const withinWindow = msRemaining > 0;
 
             nextStep = withinWindow
               ? "Awaiting PO acceptance, you can amend for 30 seconds"
@@ -1333,7 +1333,7 @@
   async function loadJobs(companyId) {
     const { data: jobsData, error: jobsError } = await supabaseClient
       .from("wmas_jobs")
-      .select("id, company_id, quote_id, quote_request_id, job_ref, title, status, started_at")
+      .select("id, company_id, quote_id, quote_request_id, job_ref, title, status, started_at, po_accepted_at")
       .eq("company_id", companyId)
       .order("started_at", { ascending: false });
 
