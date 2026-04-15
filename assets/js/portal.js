@@ -372,7 +372,9 @@
               </div>
             `;
           } else {
-            const created = new Date(latestPO.created_at).getTime();
+            const created = job.po_accepted_at
+              ? new Date(job.po_accepted_at).getTime()
+              : new Date(latestPO.created_at).getTime();
             const now = Date.now();
             const msRemaining = 30000 - (now - created);
             const withinWindow = msRemaining > 0;
@@ -1007,6 +1009,13 @@
       return false;
     }
 
+    await supabaseClient
+  .from("wmas_jobs")
+  .update({
+    po_accepted_at: new Date().toISOString()
+  })
+  .eq("id", job.id);
+    
     await insertJobEvent(
       job,
       "po_uploaded",
