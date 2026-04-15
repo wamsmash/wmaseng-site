@@ -372,24 +372,24 @@
               </div>
             `;
           } else {
-const created = job.po_accepted_at
-  ? new Date(job.po_accepted_at).getTime()
-  : new Date(latestPO.created_at).getTime();
-const now = Date.now();
-const msRemaining = 30000 - (now - created);
-const withinWindow = msRemaining > 0;
+    const created = job.po_accepted_at
+      ? new Date(job.po_accepted_at).getTime()
+      : new Date(latestPO.created_at).getTime();
+    const now = Date.now();
+    const elapsed = now - created;
+    const withinWindow = elapsed < 30000;
+            console.log("PO timing", { created, now, elapsed });
 
             nextStep = withinWindow
               ? "Awaiting PO acceptance, you can amend for 30 seconds"
               : "PO accepted, reviewing live capacity and creating concept model.<br><br>Thank you for your business";
 
-            if (!withinWindow) {
-              status.label = "PO accepted";
-              status.bg = "rgba(108,186,92,.14)";
-              status.border = "rgba(108,186,92,.34)";
-              status.color = "#8fda7d";
-            }
-
+if (!withinWindow) {
+  status.label = "PO accepted";
+  status.bg = "rgba(108,186,92,.14)";
+  status.border = "rgba(108,186,92,.34)";
+  status.color = "#8fda7d";
+}
             actionHtml = `
               <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
                 ${
