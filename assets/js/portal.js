@@ -1124,9 +1124,9 @@ const awaitingPoJob = visibleJobs.find(function (job) {
     selectEl.onchange = async function () {
       const selectedId = selectEl.value;
       portalState.adminTargetCompany =
-        portalState.adminCompanies.find(function (company) {
-          return company.id === selectedId;
-        }) || null;
+  portalState.adminCompanies.find(function (company) {
+    return String(company.id) === String(selectedId);
+  }) || null;
 
       const subtextEl = document.getElementById("portalSubtext");
       if (subtextEl && portalState.adminTargetCompany) {
