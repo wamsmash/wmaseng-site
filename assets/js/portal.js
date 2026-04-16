@@ -138,6 +138,13 @@
           border: "rgba(65,145,255,.34)",
           color: "#79b2ff"
         };
+      case "pack_issued":
+       return {
+        label: "Drawing pack issued",
+         bg: "rgba(160,110,255,.14)",
+         border: "rgba(160,110,255,.34)",
+         color: "#b798ff"
+        };
       case "complete":
         return {
           label: "Completed",
