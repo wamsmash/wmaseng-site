@@ -1981,7 +1981,7 @@ document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
 
     const { data: profile, error } = await supabaseClient
       .from("wmas_profiles")
-      .select("id, full_name, email, role, company_id, is_active")
+      .select("id, full_name, preferred_name, email, role, company_id, is_active")
       .eq("id", userId)
       .single();
 
@@ -2028,8 +2028,8 @@ document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
         "Client access is active. Your projects, files and messages are ready below";
     }
 
-    welcomeEl.textContent = `Welcome, ${profile.full_name || "Client"}`;
-
+    welcomeEl.textContent = `Welcome, ${profile.preferred_name || profile.full_name || "Client"}`;
+    
     bindSearch();
     await reloadPortalData();
     await handleAdminCreateJob();
