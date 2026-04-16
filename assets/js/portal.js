@@ -430,7 +430,7 @@ const created = job.po_accepted_at
         
 if (job.status === "pack_issued") {
   nextStep =
-    "Drawing pack issued, see Technical Files. Your invoice will follow in due course. Thank you for your continued business";
+    "Drawing pack issued, please see Technical Files (below). Thank you for your continued business";
 }
 
 if (job.status === "complete") {
@@ -736,10 +736,10 @@ const awaitingPoJob = visibleJobs.find(function (job) {
 
         return `
           <div style="padding:12px 14px 12px 0;border-top:1px solid rgba(255,255,255,.08)">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-              <div style="font-weight:700;color:#edf1f4">${subject || "Message"}</div>
-              <div style="font-size:.84rem;color:#a8b2bc">${senderLabel}</div>
-            </div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+  <div style="font-weight:700;color:#edf1f4">${subject || "Message"}</div>
+  <div style="font-size:.8rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
+</div>
             <div style="margin-top:8px;color:#d7dee5;line-height:1.7">${formattedBody}</div>
             ${
               portalState.profile?.role === "admin" &&
@@ -750,7 +750,7 @@ const awaitingPoJob = visibleJobs.find(function (job) {
                 ? `<div style="margin-top:10px"><button class="btn" data-rfq="${rfqId || ""}" data-request-ref="${requestRef || ""}">Create Job from RFQ</button></div>`
                 : ""
             }
-            <div style="margin-top:8px;font-size:.82rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
+            
           </div>
         `;
       })
