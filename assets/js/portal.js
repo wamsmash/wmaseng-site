@@ -425,19 +425,24 @@ const created = new Date(job.po_accepted_at).getTime();
           nextStep = "Final drawing pack is being prepared";
         }
 
-        if (job.status === "complete") {
-          nextStep = "Thank you for your business";
+if (job.status === "pack_issued") {
+  nextStep =
+    "Drawing pack issued. Thank you for your business. Your invoice will follow in line with agreed terms";
+}
 
-          actionHtml = `
-            <div style="margin-top:10px">
-              ${
-                latestInvoice
-                  ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank" rel="noopener noreferrer">View Invoice</a>`
-                  : ""
-              }
-            </div>
-          `;
-        }
+if (job.status === "complete") {
+  nextStep = "Job complete. Thank you for your business";
+
+  actionHtml = `
+    <div style="margin-top:10px">
+      ${
+        latestInvoice
+          ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank" rel="noopener noreferrer">View Invoice</a>`
+          : ""
+      }
+    </div>
+  `;
+}
         return `
           <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
             <div style="font-weight:700;color:#edf1f4">${job.job_ref}</div>
