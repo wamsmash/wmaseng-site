@@ -1145,31 +1145,6 @@ document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
       return;
     }
 
-    async function handleAdminUploadJobFile() {
-  const companySelect = document.getElementById("adminFileCompany");
-  const jobSelect = document.getElementById("adminFileJob");
-  const titleEl = document.getElementById("adminFileTitle");
-  const categoryEl = document.getElementById("adminFileCategory");
-  const revisionEl = document.getElementById("adminFileRevision");
-  const documentKindEl = document.getElementById("adminFileDocumentKind");
-  const fileEl = document.getElementById("adminFileUpload");
-  const uploadBtn = document.getElementById("adminUploadJobFileBtn");
-  const statusEl = document.getElementById("adminUploadJobFileStatus");
-
-  if (
-    !companySelect ||
-    !jobSelect ||
-    !titleEl ||
-    !categoryEl ||
-    !revisionEl ||
-    !documentKindEl ||
-    !fileEl ||
-    !uploadBtn ||
-    !statusEl
-  ) {
-    return;
-  }
-
   function loadCompanies() {
     companySelect.innerHTML = portalState.adminCompanies
       .map(function (company) {
@@ -1399,6 +1374,177 @@ document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
     await loadFilesForCompany();
   }
 
+
+async function handleAdminUploadJobFile() {
+  const companySelect = document.getElementById("adminFileCompany");
+  const jobSelect = document.getElementById("adminFileJob");
+  const titleEl = document.getElementById("adminFileTitle");
+  const categoryEl = document.getElementById("adminFileCategory");
+  const revisionEl = document.getElementById("adminFileRevision");
+  const documentKindEl = document.getElementById("adminFileDocumentKind");
+  const fileEl = document.getElementById("adminFileUpload");
+  const uploadBtn = document.getElementById("adminUploadJobFileBtn");
+  const statusEl = document.getElementById("adminUploadJobFileStatus");
+
+  if (
+    !companySelect ||
+    !jobSelect ||
+    !titleEl ||
+    !categoryEl ||
+    !revisionEl ||
+    !documentKindEl ||
+    !fileEl ||
+    !uploadBtn ||
+    !statusEl
+  ) {
+    return;
+  }
+
+  function loadCompanies() {
+    companySelect.innerHTML = portalState.adminCompanies
+      .map(function (company) {
+        return `<option value="${company.id}">${company.name}</option>`;
+      })
+      .join("");
+
+    if (portalState.adminTargetCompany) {
+      companySelect.value = portalState.adminTargetCompany.id;
+    }
+  }
+
+  async function loadJobsForCompany() {
+    const companyId = companySelect.value;
+
+    const { data: jobs } = await supabaseClient
+      .from("wmas_jobs")
+      .select("id, job_ref, title")
+      .eq("company_id", companyId)
+      .order("started_at", { ascending: false });
+
+    jobSelect.innerHTML = (jobs || [])
+      .map(function (job) {
+        return `<option value="${job.id}" data-job-ref="${job.job_ref}">${job.job_ref} | ${job.title}</option>`;
+      })
+      .join("");
+
+    if (!jobs || !jobs.length) {
+      jobSelect.innerHTML = `<option value="">No jobs found</option>`;
+    }
+  }
+
+  companySelect.onchange = async function () {
+    await loadJobsForCompany();
+  };
+
+  uploadBtn.onclick = async function () {
+    const companyId = companySelect.value;
+    const jobId = jobSelect.value;
+    const selectedJob = jobSelect.selectedOptions[0];
+    const title = titleEl.value.trim();
+    const category = categoryEl.value;
+    const revision = revisionEl.value.trim() || "A";
+    const documentKind = documentKindEl.value;
+    const file = fileEl.files?.[0] || null;
+
+    if (!companyId || !jobId || !selectedJob || !file) {
+      statusEl.textContent = "Select company, job and file";
+      return;
+    }
+
+    const jobRef = selectedJob.getAttribute("data-job-ref") || "";
+    if (!jobRef) {
+      statusEl.textContent = "Unable to determine job reference";
+      return;
+    }
+
+    const { data: companyRow } = await supabaseClient
+      .from("wmas_companies")
+      .select("slug")
+      .eq("id", companyId)
+      .single();
+
+    if (!companyRow?.slug) {
+      statusEl.textContent = "Unable to determine company slug";
+      return;
+    }
+
+    const safeFileName = file.name.replace(/\s+/g, "_");
+    const objectPath = `${companyRow.slug}/${jobRef}_${safeFileName}`;
+
+    const bucketName =
+      category === "commercial"
+        ? "wmas-commercial-files"
+        : "wmas-job-files";
+
+    statusEl.textContent = "Uploading file";
+
+    const uploadResult = await supabaseClient.storage
+      .from(bucketName)
+      .upload(objectPath, file, { upsert: false });
+
+    if (uploadResult.error) {
+      statusEl.textContent = uploadResult.error.message || "Upload failed";
+      return;
+    }
+
+    if (category === "commercial") {
+      const insertResult = await supabaseClient
+        .from("wmas_commercial_files")
+        .insert({
+          company_id: companyId,
+          job_id: jobId,
+          title: title || `${jobRef} File`,
+          document_kind: documentKind || "document",
+          file_name: file.name,
+          storage_path: objectPath,
+          file_type: file.type || "application/octet-stream",
+          revision: revision,
+          visible_to_client: true,
+          uploaded_by: portalState.profile.id,
+          status: "issued",
+          sort_order: 50
+        });
+
+      if (insertResult.error) {
+        statusEl.textContent = insertResult.error.message || "Unable to register file";
+        return;
+      }
+    } else {
+      const insertResult = await supabaseClient
+        .from("wmas_job_files")
+        .insert({
+          company_id: companyId,
+          job_id: jobId,
+          title: title || `${jobRef} File`,
+          file_name: file.name,
+          storage_path: objectPath,
+          file_type: file.type || "application/octet-stream",
+          revision: revision,
+          visible_to_client: true,
+          uploaded_by: portalState.profile.id
+        });
+
+      if (insertResult.error) {
+        statusEl.textContent = insertResult.error.message || "Unable to register file";
+        return;
+      }
+    }
+
+    titleEl.value = "";
+    revisionEl.value = "A";
+    documentKindEl.value = "";
+    fileEl.value = "";
+
+    statusEl.textContent = "File uploaded";
+    await reloadPortalData();
+    await loadJobsForCompany();
+  };
+
+  loadCompanies();
+  await loadJobsForCompany();
+}
+
+ 
   async function handleAdminManageJobs() {
     const companySelect = document.getElementById("adminManageCompany");
     const jobSelect = document.getElementById("adminManageJob");
