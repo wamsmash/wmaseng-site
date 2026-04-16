@@ -93,6 +93,7 @@
                 <option value="designing">Designing</option>
                 <option value="awaiting_approval">Awaiting approval</option>
                 <option value="drafting_pack">Drafting pack</option>
+                <option value="pack_issued">Drawing pack issued</option>
                 <option value="complete">Complete</option>
               </select>
             </div>
@@ -112,7 +113,7 @@
 
         <div class="card" style="grid-column:1/-1;margin-top:16px">
           <h3>Admin Job Actions</h3>
-          <p class="muted">Update job status or remove test data</p>
+          <p class="muted">Update job status, remove test data or add files</p>
 
           <div class="form-grid" style="margin-top:14px">
             <div class="form-group">
@@ -132,14 +133,14 @@
             <div class="form-group">
               <label for="adminManageStatus">Update status</label>
               <select id="adminManageStatus">
-            <option value="estimating">Reviewing / Estimating</option>
-            <option value="quoted">Quoted</option>
-            <option value="awaiting_po">Awaiting PO acceptance</option>
-            <option value="designing">Designing</option>
-            <option value="awaiting_approval">Awaiting approval</option>
-            <option value="drafting_pack">Drafting pack</option>
-            <option value="pack_issued">Drawing pack issued</option>
-            <option value="complete">Completed</option>
+                <option value="estimating">Reviewing / Estimating</option>
+                <option value="quoted">Quoted</option>
+                <option value="awaiting_po">Awaiting PO acceptance</option>
+                <option value="designing">Designing</option>
+                <option value="awaiting_approval">Awaiting approval</option>
+                <option value="drafting_pack">Drafting pack</option>
+                <option value="pack_issued">Drawing pack issued</option>
+                <option value="complete">Completed</option>
               </select>
             </div>
           </div>
@@ -150,6 +151,67 @@
           </div>
 
           <div id="adminManageStatusNotice" class="notice" style="margin-top:14px">No action yet</div>
+
+          <div class="notice" style="margin-top:18px"></div>
+
+          <h3 style="margin-top:18px">Add Job File</h3>
+          <p class="muted">Upload technical or commercial files against a selected job</p>
+
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group">
+              <label for="adminFileCompany">Client company</label>
+              <select id="adminFileCompany">
+                <option value="">Loading client companies</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="adminFileJob">Select job</label>
+              <select id="adminFileJob">
+                <option value="">Select a job</option>
+              </select>
+            </div>
+
+            <div class="form-group full">
+              <label for="adminFileTitle">File title</label>
+              <input id="adminFileTitle" type="text" placeholder="e.g. WM194-1 Drawing Pack">
+            </div>
+
+            <div class="form-group">
+              <label for="adminFileCategory">File category</label>
+              <select id="adminFileCategory">
+                <option value="technical">Technical</option>
+                <option value="commercial">Commercial</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="adminFileDocumentKind">Commercial kind</label>
+              <select id="adminFileDocumentKind">
+                <option value="">Not applicable</option>
+                <option value="quote">Quote</option>
+                <option value="po">Purchase Order</option>
+                <option value="invoice">Invoice</option>
+                <option value="document">Document</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="adminFileRevision">Revision</label>
+              <input id="adminFileRevision" type="text" value="A">
+            </div>
+
+            <div class="form-group full">
+              <label for="adminFileUpload">Upload file</label>
+              <input id="adminFileUpload" type="file">
+            </div>
+          </div>
+
+          <div class="cta-row" style="margin-top:14px">
+            <button id="adminUploadJobFileBtn" class="btn btn-primary" type="button">Upload File</button>
+          </div>
+
+          <div id="adminUploadJobFileStatus" class="notice" style="margin-top:14px">No file action yet</div>
         </div>
       </div>
 
@@ -260,34 +322,34 @@
             <button id="adminIssueQuoteBtn" class="btn btn-primary" type="button">Issue Quote</button>
           </div>
 
-<div id="adminQuoteStatus" class="notice" style="margin-top:14px">No action yet</div>
+          <div id="adminQuoteStatus" class="notice" style="margin-top:14px">No action yet</div>
 
-<div class="notice" style="margin-top:18px"></div>
+          <div class="notice" style="margin-top:18px"></div>
 
-<h3 style="margin-top:18px">Manage Commercial Files</h3>
-<p class="muted">Delete issued quotes, purchase orders and other commercial documents</p>
+          <h3 style="margin-top:18px">Manage Commercial Files</h3>
+          <p class="muted">Delete issued quotes, purchase orders and other commercial documents</p>
 
-<div class="form-grid" style="margin-top:14px">
-  <div class="form-group">
-    <label for="adminCommercialCompany">Client company</label>
-    <select id="adminCommercialCompany">
-      <option value="">Loading client companies</option>
-    </select>
-  </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group">
+              <label for="adminCommercialCompany">Client company</label>
+              <select id="adminCommercialCompany">
+                <option value="">Loading client companies</option>
+              </select>
+            </div>
 
-  <div class="form-group">
-    <label for="adminCommercialFile">Select file</label>
-    <select id="adminCommercialFile">
-      <option value="">Select a file</option>
-    </select>
-  </div>
-</div>
+            <div class="form-group">
+              <label for="adminCommercialFile">Select file</label>
+              <select id="adminCommercialFile">
+                <option value="">Select a file</option>
+              </select>
+            </div>
+          </div>
 
-<div class="cta-row" style="margin-top:12px">
-  <button id="adminDeleteCommercialBtn" class="btn" type="button">Delete File</button>
-</div>
+          <div class="cta-row" style="margin-top:12px">
+            <button id="adminDeleteCommercialBtn" class="btn" type="button">Delete File</button>
+          </div>
 
-<div id="adminCommercialStatus" class="notice" style="margin-top:14px">No file action yet</div>
+          <div id="adminCommercialStatus" class="notice" style="margin-top:14px">No file action yet</div>
         </div>
 
         <div class="card">
