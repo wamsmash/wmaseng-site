@@ -427,9 +427,10 @@ const created = job.po_accepted_at
           nextStep = "Final drawing pack is being prepared";
         }
 
+        
 if (job.status === "pack_issued") {
   nextStep =
-    "Drawing pack issued. Thank you for your business. Your invoice will follow in line with agreed terms";
+    "Drawing pack issued, see Technical Files. Your invoice will follow in due course. Thank you for your continued business";
 }
 
 if (job.status === "complete") {
