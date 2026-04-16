@@ -1123,7 +1123,7 @@ const awaitingPoJob = visibleJobs.find(function (job) {
 
     selectEl.onchange = async function () {
       const selectedId = selectEl.value;
-      portalState.adminTargetCompany =
+portalState.adminTargetCompany =
   portalState.adminCompanies.find(function (company) {
     return String(company.id) === String(selectedId);
   }) || null;
