@@ -2035,14 +2035,16 @@ async function handleAdminUploadJobFile() {
 
     welcomeEl.textContent = `Welcome, ${profile.preferred_name || profile.full_name || "Client"}`;
     
-    bindSearch();
-    await reloadPortalData();
+bindSearch();
+
 if (portalState.profile.role === "admin") {
   await handleAdminCreateJob();
   await handleAdminManageJobs();
   await handleAdminCommercialFiles();
   await handleAdminUploadJobFile();
 }
+
+await reloadPortalData();
 
     
     if (portalState.profile.role === "admin") {
