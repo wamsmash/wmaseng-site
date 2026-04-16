@@ -326,28 +326,38 @@
 
           <div class="notice" style="margin-top:18px"></div>
 
-          <h3 style="margin-top:18px">Manage Commercial Files</h3>
-          <p class="muted">Delete issued quotes, purchase orders and other commercial documents</p>
+<h3 style="margin-top:18px">Manage Files</h3>
+<p class="muted">Delete technical files, issued quotes, purchase orders and other portal documents</p>
 
-          <div class="form-grid" style="margin-top:14px">
-            <div class="form-group">
-              <label for="adminCommercialCompany">Client company</label>
-              <select id="adminCommercialCompany">
-                <option value="">Loading client companies</option>
-              </select>
-            </div>
+<div class="form-grid" style="margin-top:14px">
+  <div class="form-group">
+    <label for="adminCommercialCompany">Client company</label>
+    <select id="adminCommercialCompany">
+      <option value="">Loading client companies</option>
+    </select>
+  </div>
 
-            <div class="form-group">
-              <label for="adminCommercialFile">Select file</label>
-              <select id="adminCommercialFile">
-                <option value="">Select a file</option>
-              </select>
-            </div>
-          </div>
+  <div class="form-group">
+    <label for="adminDeleteFileCategory">File category</label>
+    <select id="adminDeleteFileCategory">
+      <option value="commercial">Commercial</option>
+      <option value="technical">Technical</option>
+    </select>
+  </div>
 
-          <div class="cta-row" style="margin-top:12px">
-            <button id="adminDeleteCommercialBtn" class="btn" type="button">Delete File</button>
-          </div>
+  <div class="form-group full">
+    <label for="adminCommercialFile">Select file</label>
+    <select id="adminCommercialFile">
+      <option value="">Select a file</option>
+    </select>
+  </div>
+</div>
+
+<div class="cta-row" style="margin-top:12px">
+  <button id="adminDeleteCommercialBtn" class="btn" type="button">Delete File</button>
+</div>
+
+<div id="adminCommercialStatus" class="notice" style="margin-top:14px">No file action yet</div>
 
           <div id="adminCommercialStatus" class="notice" style="margin-top:14px">No file action yet</div>
         </div>
