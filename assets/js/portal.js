@@ -1139,36 +1139,49 @@ portalState.adminTargetCompany =
 
 
 
-  async function handleAdminCommercialFiles() {
-    const companySelect = document.getElementById("adminCommercialCompany");
-    const fileSelect = document.getElementById("adminCommercialFile");
-    const deleteBtn = document.getElementById("adminDeleteCommercialBtn");
-    const statusEl = document.getElementById("adminCommercialStatus");
+async function handleAdminCommercialFiles() {
+  const companySelect = document.getElementById("adminCommercialCompany");
+  const categorySelect = document.getElementById("adminDeleteFileCategory");
+  const fileSelect = document.getElementById("adminCommercialFile");
+  const deleteBtn = document.getElementById("adminDeleteCommercialBtn");
+  const statusEl = document.getElementById("adminCommercialStatus");
 
-    if (!companySelect || !fileSelect || !deleteBtn || !statusEl) {
+  if (!companySelect || !categorySelect || !fileSelect || !deleteBtn || !statusEl) {
+    return;
+  }
+
+  function loadCompanies() {
+    companySelect.innerHTML = portalState.adminCompanies
+      .map(function (company) {
+        return `<option value="${company.id}">${company.name}</option>`;
+      })
+      .join("");
+
+    if (portalState.adminTargetCompany) {
+      companySelect.value = portalState.adminTargetCompany.id;
+    }
+  }
+
+  async function loadFilesForCompany() {
+    const companyId = companySelect.value;
+    const category = categorySelect.value;
+
+    if (!companyId) {
+      fileSelect.innerHTML = `<option value="">No company selected</option>`;
       return;
     }
 
-    function loadCompanies() {
-      companySelect.innerHTML = portalState.adminCompanies
-        .map(function (company) {
-          return `<option value="${company.id}">${company.name}</option>`;
-        })
-        .join("");
-
-      if (portalState.adminTargetCompany) {
-        companySelect.value = portalState.adminTargetCompany.id;
-      }
-    }
-
-    async function loadFilesForCompany() {
-      const companyId = companySelect.value;
-
-      const { data: files } = await supabaseClient
-        .from("wmas_commercial_files")
+    if (category === "technical") {
+      const { data: files, error } = await supabaseClient
+        .from("wmas_job_files")
         .select("id, title, file_name, storage_path")
         .eq("company_id", companyId)
         .order("created_at", { ascending: false });
+
+      if (error) {
+        fileSelect.innerHTML = `<option value="">Unable to load files</option>`;
+        return;
+      }
 
       fileSelect.innerHTML = (files || [])
         .map(function (file) {
@@ -1179,59 +1192,97 @@ portalState.adminTargetCompany =
       if (!files || !files.length) {
         fileSelect.innerHTML = `<option value="">No files found</option>`;
       }
+
+      return;
     }
 
-    companySelect.onchange = async function () {
-      await loadFilesForCompany();
-    };
+    const { data: files, error } = await supabaseClient
+      .from("wmas_commercial_files")
+      .select("id, title, file_name, storage_path")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false });
 
-    deleteBtn.onclick = async function () {
-      const fileId = fileSelect.value;
-      const selected = fileSelect.selectedOptions[0];
-      const storagePath = selected ? selected.getAttribute("data-path") : "";
+    if (error) {
+      fileSelect.innerHTML = `<option value="">Unable to load files</option>`;
+      return;
+    }
 
-      if (!fileId || !storagePath) {
-        statusEl.textContent = "Select a file";
-        return;
-      }
+    fileSelect.innerHTML = (files || [])
+      .map(function (file) {
+        return `<option value="${file.id}" data-path="${file.storage_path}">${file.title} | ${file.file_name}</option>`;
+      })
+      .join("");
 
-      const confirmed = window.confirm("Delete this commercial file?");
-      if (!confirmed) {
-        return;
-      }
-
-      statusEl.textContent = "Deleting file";
-
-      const deleteStorageResult = await supabaseClient.storage
-        .from("wmas-commercial-files")
-        .remove([storagePath]);
-
-      if (deleteStorageResult.error) {
-        statusEl.textContent =
-          deleteStorageResult.error.message || "Unable to delete file from storage";
-        return;
-      }
-
-      const deleteRowResult = await supabaseClient
-        .from("wmas_commercial_files")
-        .delete()
-        .eq("id", fileId);
-
-      if (deleteRowResult.error) {
-        statusEl.textContent =
-          deleteRowResult.error.message || "Unable to delete file record";
-        return;
-      }
-
-      statusEl.textContent = "File deleted";
-      await reloadPortalData();
-      await loadFilesForCompany();
-    };
-
-    loadCompanies();
-    await loadFilesForCompany();
+    if (!files || !files.length) {
+      fileSelect.innerHTML = `<option value="">No files found</option>`;
+    }
   }
 
+  companySelect.onchange = async function () {
+    await loadFilesForCompany();
+  };
+
+  categorySelect.onchange = async function () {
+    await loadFilesForCompany();
+  };
+
+  deleteBtn.onclick = async function () {
+    const fileId = fileSelect.value;
+    const selected = fileSelect.selectedOptions[0];
+    const storagePath = selected ? selected.getAttribute("data-path") : "";
+    const category = categorySelect.value;
+
+    if (!fileId || !storagePath) {
+      statusEl.textContent = "Select a file";
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this file?");
+    if (!confirmed) {
+      return;
+    }
+
+    statusEl.textContent = "Deleting file";
+
+    const bucketName =
+      category === "technical"
+        ? "wmas-job-files"
+        : "wmas-commercial-files";
+
+    const tableName =
+      category === "technical"
+        ? "wmas_job_files"
+        : "wmas_commercial_files";
+
+    const deleteStorageResult = await supabaseClient.storage
+      .from(bucketName)
+      .remove([storagePath]);
+
+    if (deleteStorageResult.error) {
+      statusEl.textContent =
+        deleteStorageResult.error.message || "Unable to delete file from storage";
+      return;
+    }
+
+    const deleteRowResult = await supabaseClient
+      .from(tableName)
+      .delete()
+      .eq("id", fileId);
+
+    if (deleteRowResult.error) {
+      statusEl.textContent =
+        deleteRowResult.error.message || "Unable to delete file record";
+      return;
+    }
+
+    statusEl.textContent = "File deleted";
+    await reloadPortalData();
+    await loadFilesForCompany();
+  };
+
+  loadCompanies();
+  await loadFilesForCompany();
+}
 
 
 async function handleAdminUploadJobFile() {
