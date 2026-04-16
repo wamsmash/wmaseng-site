@@ -379,7 +379,9 @@
               </div>
             `;
           } else {
-const created = new Date(job.po_accepted_at).getTime();
+const created = job.po_accepted_at
+  ? new Date(job.po_accepted_at).getTime()
+  : new Date(latestPO.created_at).getTime();
             const now = Date.now();
             const elapsed = now - created;
             const withinWindow = elapsed < 30000;
@@ -536,22 +538,21 @@ document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
       });
     }, 100);
 
-    const awaitingPoJob = visibleJobs.find(function (job) {
-      if (job.status !== "awaiting_po") return false;
+const awaitingPoJob = visibleJobs.find(function (job) {
+  if (job.status !== "awaiting_po") return false;
 
-      const poDoc = portalState.commercialFiles.find(function (file) {
-        return String(file.job_id) === String(job.id) && file.document_kind === "po";
-      });
+  const poDoc = portalState.commercialFiles.find(function (file) {
+    return String(file.job_id) === String(job.id) && file.document_kind === "po";
+  });
 
-      if (!poDoc) return false;
+  if (!poDoc) return false;
 
-const created = job.po_accepted_at
-  ? new Date(job.po_accepted_at).getTime()
-  : new Date(latestPO.created_at).getTime();
-const now = Date.now();
-const elapsed = now - created;
-const withinWindow = elapsed < 30000;
-    });
+  const created = job.po_accepted_at
+    ? new Date(job.po_accepted_at).getTime()
+    : new Date(poDoc.created_at).getTime();
+
+  return Date.now() - created < 30000;
+});
 
     if (awaitingPoJob) {
       setTimeout(function () {
