@@ -49,7 +49,8 @@
       }
 
       if (loginStatus) {
-        loginStatus.textContent = "Recovery link detected. Enter your new password below";
+        loginStatus.textContent =
+          "Recovery link detected. Enter your new password below";
       }
     }
 
@@ -643,6 +644,56 @@
     }
   }
 
+  async function logFileDownload(fileCategory, file) {
+    if (!portalState.profile || !file) {
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from("wmas_file_downloads")
+      .insert({
+        company_id: file.company_id || portalState.profile.company_id || null,
+        job_id: file.job_id || null,
+        file_category: fileCategory,
+        file_title: file.title || "",
+        file_name: file.file_name || "",
+        storage_path: file.storage_path || "",
+        downloaded_by: portalState.profile.id
+      });
+
+    if (error) {
+      console.error("wmas_file_downloads insert failed", error);
+    }
+  }
+
+  async function triggerTrackedDownload(fileCategory, file) {
+    if (!file || !file.storage_path) {
+      return;
+    }
+
+    try {
+      await logFileDownload(fileCategory, file);
+    } catch (error) {
+      console.error("Download logging failed", error);
+    }
+
+    const bucketName =
+      fileCategory === "technical"
+        ? "wmas-job-files"
+        : "wmas-commercial-files";
+
+    const { data, error } = await supabaseClient.storage
+      .from(bucketName)
+      .createSignedUrl(file.storage_path, 3600);
+
+    if (error || !data?.signedUrl) {
+      console.error("Signed URL failed", error);
+      return;
+    }
+
+    window.location.href = data.signedUrl;
+  }
+
   function renderFiles(files) {
     const el = document.getElementById("filesCardContent");
     if (!el) {
@@ -684,13 +735,11 @@
             </div>
             <div style="margin-top:8px;font-size:.92rem;color:#a8b2bc">${file.file_name}</div>
             <div style="margin-top:10px">
-              <a
+              <button
                 class="btn"
-                href="${file.downloadUrl}"
-                target="_blank"
-                rel="noopener noreferrer"
+                type="button"
                 data-download-technical="${file.id}"
-              >Download</a>
+              >Download</button>
             </div>
           </div>
         `;
@@ -698,20 +747,14 @@
       .join("");
 
     setTimeout(function () {
-      document.querySelectorAll("[data-download-technical]").forEach(function (link) {
-        link.onclick = async function (event) {
-          event.preventDefault();
-
-          const fileId = link.getAttribute("data-download-technical");
+      document.querySelectorAll("[data-download-technical]").forEach(function (btn) {
+        btn.onclick = async function () {
+          const fileId = btn.getAttribute("data-download-technical");
           const file = portalState.technicalFiles.find(function (item) {
             return String(item.id) === String(fileId);
           });
 
-          await logFileDownload("technical", file);
-
-          if (file && file.downloadUrl && file.downloadUrl !== "#") {
-            window.open(file.downloadUrl, "_blank", "noopener,noreferrer");
-          }
+          await triggerTrackedDownload("technical", file);
         };
       });
     }, 50);
@@ -778,13 +821,11 @@
                     </div>
                     <div style="margin-top:6px;font-size:.9rem;color:#a8b2bc">${file.file_name}</div>
                     <div style="margin-top:8px">
-                      <a
+                      <button
                         class="btn"
-                        href="${file.downloadUrl}"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        type="button"
                         data-download-commercial="${file.id}"
-                      >Download</a>
+                      >Download</button>
                     </div>
                   </div>
                 `;
@@ -796,20 +837,14 @@
       .join("");
 
     setTimeout(function () {
-      document.querySelectorAll("[data-download-commercial]").forEach(function (link) {
-        link.onclick = async function (event) {
-          event.preventDefault();
-
-          const fileId = link.getAttribute("data-download-commercial");
+      document.querySelectorAll("[data-download-commercial]").forEach(function (btn) {
+        btn.onclick = async function () {
+          const fileId = btn.getAttribute("data-download-commercial");
           const file = portalState.commercialFiles.find(function (item) {
             return String(item.id) === String(fileId);
           });
 
-          await logFileDownload("commercial", file);
-
-          if (file && file.downloadUrl && file.downloadUrl !== "#") {
-            window.open(file.downloadUrl, "_blank", "noopener,noreferrer");
-          }
+          await triggerTrackedDownload("commercial", file);
         };
       });
     }, 50);
@@ -1032,24 +1067,6 @@
       event_notes: eventNotes,
       acted_by: userId
     });
-  }
-
-  async function logFileDownload(fileCategory, file) {
-    if (!portalState.profile || !file) {
-      return;
-    }
-
-    await supabaseClient
-      .from("wmas_file_downloads")
-      .insert({
-        company_id: file.company_id || portalState.profile.company_id || null,
-        job_id: file.job_id || null,
-        file_category: fileCategory,
-        file_title: file.title || "",
-        file_name: file.file_name || "",
-        storage_path: file.storage_path || "",
-        downloaded_by: portalState.profile.id
-      });
   }
 
   async function handleAcceptQuote(job, userId) {
