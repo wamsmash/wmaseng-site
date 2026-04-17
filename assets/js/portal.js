@@ -23,52 +23,132 @@
     adminCompanies: [],
     adminTargetCompany: null
   };
+async function handleLoginPage() {
+  const loginForm = document.getElementById("clientLoginForm");
+  const loginStatus = document.getElementById("loginStatus");
+  const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
+  const resetPasswordWrap = document.getElementById("resetPasswordWrap");
+  const updatePasswordBtn = document.getElementById("updatePasswordBtn");
+  const resetPasswordEl = document.getElementById("resetPassword");
+  const resetPasswordConfirmEl = document.getElementById("resetPasswordConfirm");
 
-  async function handleLoginPage() {
-    const loginForm = document.getElementById("clientLoginForm");
-    const loginStatus = document.getElementById("loginStatus");
+  if (!loginForm) {
+    return;
+  }
 
-    if (!loginForm) {
+  const hash = window.location.hash || "";
+  const isRecovery =
+    hash.includes("type=recovery") ||
+    hash.includes("access_token=") ||
+    hash.includes("refresh_token=");
+
+  if (isRecovery) {
+    if (resetPasswordWrap) {
+      resetPasswordWrap.style.display = "block";
+    }
+
+    if (loginStatus) {
+      loginStatus.textContent = "Recovery link detected. Enter your new password below";
+    }
+  }
+
+  const {
+    data: { session }
+  } = await supabaseClient.auth.getSession();
+
+  if (session && !isRecovery) {
+    window.location.href = "portal.html";
+    return;
+  }
+
+  loginForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const email = document.getElementById("loginEmail")?.value.trim() || "";
+    const password = document.getElementById("loginPassword")?.value || "";
+
+    if (!email || !password) {
+      if (loginStatus) {
+        loginStatus.textContent = "Enter your email and password";
+      }
       return;
     }
 
-    const {
-      data: { session }
-    } = await supabaseClient.auth.getSession();
+    loginStatus.textContent = "Signing in";
 
-    if (session) {
-      window.location.href = "portal.html";
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      loginStatus.textContent = error.message || "Unable to sign in";
       return;
     }
 
-    loginForm.addEventListener("submit", async function (event) {
-      event.preventDefault();
+    window.location.href = "portal.html";
+  });
 
+  if (forgotPasswordBtn) {
+    forgotPasswordBtn.onclick = async function () {
       const email = document.getElementById("loginEmail")?.value.trim() || "";
-      const password = document.getElementById("loginPassword")?.value || "";
 
-      if (!email || !password) {
-        if (loginStatus) {
-          loginStatus.textContent = "Enter your email and password";
-        }
+      if (!email) {
+        loginStatus.textContent = "Enter your email first";
         return;
       }
 
-      loginStatus.textContent = "Signing in";
+      loginStatus.textContent = "Sending password reset email";
 
-      const { error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://wmaseng.co.uk/client-login.html"
       });
 
       if (error) {
-        loginStatus.textContent = error.message || "Unable to sign in";
+        loginStatus.textContent = error.message || "Unable to send reset email";
         return;
       }
 
-      window.location.href = "portal.html";
-    });
+      loginStatus.textContent = "Password reset email sent";
+    };
   }
+
+  if (updatePasswordBtn) {
+    updatePasswordBtn.onclick = async function () {
+      const password = resetPasswordEl?.value || "";
+      const confirmPassword = resetPasswordConfirmEl?.value || "";
+
+      if (!password || !confirmPassword) {
+        loginStatus.textContent = "Enter and confirm your new password";
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        loginStatus.textContent = "Passwords do not match";
+        return;
+      }
+
+      if (password.length < 6) {
+        loginStatus.textContent = "Password must be at least 6 characters";
+        return;
+      }
+
+      loginStatus.textContent = "Setting new password";
+
+      const { error } = await supabaseClient.auth.updateUser({
+        password: password
+      });
+
+      if (error) {
+        loginStatus.textContent = error.message || "Unable to update password";
+        return;
+      }
+
+      loginStatus.textContent = "Password updated. Redirecting to portal";
+      window.location.href = "portal.html";
+    };
+  }
+}
 
   function badgeHtml(label, border, bg, color) {
     return `
