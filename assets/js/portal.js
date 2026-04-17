@@ -23,132 +23,133 @@
     adminCompanies: [],
     adminTargetCompany: null
   };
-async function handleLoginPage() {
-  const loginForm = document.getElementById("clientLoginForm");
-  const loginStatus = document.getElementById("loginStatus");
-  const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
-  const resetPasswordWrap = document.getElementById("resetPasswordWrap");
-  const updatePasswordBtn = document.getElementById("updatePasswordBtn");
-  const resetPasswordEl = document.getElementById("resetPassword");
-  const resetPasswordConfirmEl = document.getElementById("resetPasswordConfirm");
 
-  if (!loginForm) {
-    return;
-  }
+  async function handleLoginPage() {
+    const loginForm = document.getElementById("clientLoginForm");
+    const loginStatus = document.getElementById("loginStatus");
+    const forgotPasswordBtn = document.getElementById("forgotPasswordBtn");
+    const resetPasswordWrap = document.getElementById("resetPasswordWrap");
+    const updatePasswordBtn = document.getElementById("updatePasswordBtn");
+    const resetPasswordEl = document.getElementById("resetPassword");
+    const resetPasswordConfirmEl = document.getElementById("resetPasswordConfirm");
 
-  const hash = window.location.hash || "";
-  const isRecovery =
-    hash.includes("type=recovery") ||
-    hash.includes("access_token=") ||
-    hash.includes("refresh_token=");
-
-  if (isRecovery) {
-    if (resetPasswordWrap) {
-      resetPasswordWrap.style.display = "block";
-    }
-
-    if (loginStatus) {
-      loginStatus.textContent = "Recovery link detected. Enter your new password below";
-    }
-  }
-
-  const {
-    data: { session }
-  } = await supabaseClient.auth.getSession();
-
-  if (session && !isRecovery) {
-    window.location.href = "portal.html";
-    return;
-  }
-
-  loginForm.addEventListener("submit", async function (event) {
-    event.preventDefault();
-
-    const email = document.getElementById("loginEmail")?.value.trim() || "";
-    const password = document.getElementById("loginPassword")?.value || "";
-
-    if (!email || !password) {
-      if (loginStatus) {
-        loginStatus.textContent = "Enter your email and password";
-      }
+    if (!loginForm) {
       return;
     }
 
-    loginStatus.textContent = "Signing in";
+    const hash = window.location.hash || "";
+    const isRecovery =
+      hash.includes("type=recovery") ||
+      hash.includes("access_token=") ||
+      hash.includes("refresh_token=");
 
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
+    if (isRecovery) {
+      if (resetPasswordWrap) {
+        resetPasswordWrap.style.display = "block";
+      }
+
+      if (loginStatus) {
+        loginStatus.textContent = "Recovery link detected. Enter your new password below";
+      }
+    }
+
+    const {
+      data: { session }
+    } = await supabaseClient.auth.getSession();
+
+    if (session && !isRecovery) {
+      window.location.href = "portal.html";
+      return;
+    }
+
+    loginForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      const email = document.getElementById("loginEmail")?.value.trim() || "";
+      const password = document.getElementById("loginPassword")?.value || "";
+
+      if (!email || !password) {
+        if (loginStatus) {
+          loginStatus.textContent = "Enter your email and password";
+        }
+        return;
+      }
+
+      loginStatus.textContent = "Signing in";
+
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        loginStatus.textContent = error.message || "Unable to sign in";
+        return;
+      }
+
+      window.location.href = "portal.html";
     });
 
-    if (error) {
-      loginStatus.textContent = error.message || "Unable to sign in";
-      return;
+    if (forgotPasswordBtn) {
+      forgotPasswordBtn.onclick = async function () {
+        const email = document.getElementById("loginEmail")?.value.trim() || "";
+
+        if (!email) {
+          loginStatus.textContent = "Enter your email first";
+          return;
+        }
+
+        loginStatus.textContent = "Sending password reset email";
+
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+          redirectTo: "https://wmaseng.co.uk/client-login.html"
+        });
+
+        if (error) {
+          loginStatus.textContent = error.message || "Unable to send reset email";
+          return;
+        }
+
+        loginStatus.textContent = "Password reset email sent";
+      };
     }
 
-    window.location.href = "portal.html";
-  });
+    if (updatePasswordBtn) {
+      updatePasswordBtn.onclick = async function () {
+        const password = resetPasswordEl?.value || "";
+        const confirmPassword = resetPasswordConfirmEl?.value || "";
 
-  if (forgotPasswordBtn) {
-    forgotPasswordBtn.onclick = async function () {
-      const email = document.getElementById("loginEmail")?.value.trim() || "";
+        if (!password || !confirmPassword) {
+          loginStatus.textContent = "Enter and confirm your new password";
+          return;
+        }
 
-      if (!email) {
-        loginStatus.textContent = "Enter your email first";
-        return;
-      }
+        if (password !== confirmPassword) {
+          loginStatus.textContent = "Passwords do not match";
+          return;
+        }
 
-      loginStatus.textContent = "Sending password reset email";
+        if (password.length < 6) {
+          loginStatus.textContent = "Password must be at least 6 characters";
+          return;
+        }
 
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: "https://wmaseng.co.uk/client-login.html"
-      });
+        loginStatus.textContent = "Setting new password";
 
-      if (error) {
-        loginStatus.textContent = error.message || "Unable to send reset email";
-        return;
-      }
+        const { error } = await supabaseClient.auth.updateUser({
+          password: password
+        });
 
-      loginStatus.textContent = "Password reset email sent";
-    };
+        if (error) {
+          loginStatus.textContent = error.message || "Unable to update password";
+          return;
+        }
+
+        loginStatus.textContent = "Password updated. Redirecting to portal";
+        window.location.href = "portal.html";
+      };
+    }
   }
-
-  if (updatePasswordBtn) {
-    updatePasswordBtn.onclick = async function () {
-      const password = resetPasswordEl?.value || "";
-      const confirmPassword = resetPasswordConfirmEl?.value || "";
-
-      if (!password || !confirmPassword) {
-        loginStatus.textContent = "Enter and confirm your new password";
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        loginStatus.textContent = "Passwords do not match";
-        return;
-      }
-
-      if (password.length < 6) {
-        loginStatus.textContent = "Password must be at least 6 characters";
-        return;
-      }
-
-      loginStatus.textContent = "Setting new password";
-
-      const { error } = await supabaseClient.auth.updateUser({
-        password: password
-      });
-
-      if (error) {
-        loginStatus.textContent = error.message || "Unable to update password";
-        return;
-      }
-
-      loginStatus.textContent = "Password updated. Redirecting to portal";
-      window.location.href = "portal.html";
-    };
-  }
-}
 
   function badgeHtml(label, border, bg, color) {
     return `
@@ -219,11 +220,11 @@ async function handleLoginPage() {
           color: "#79b2ff"
         };
       case "pack_issued":
-       return {
-        label: "Drawing pack issued",
-         bg: "rgba(160,110,255,.14)",
-         border: "rgba(160,110,255,.34)",
-         color: "#b798ff"
+        return {
+          label: "Drawing pack issued",
+          bg: "rgba(160,110,255,.14)",
+          border: "rgba(160,110,255,.34)",
+          color: "#b798ff"
         };
       case "complete":
         return {
@@ -459,9 +460,9 @@ async function handleLoginPage() {
               </div>
             `;
           } else {
-const created = job.po_accepted_at
-  ? new Date(job.po_accepted_at).getTime()
-  : new Date(latestPO.created_at).getTime();
+            const created = job.po_accepted_at
+              ? new Date(job.po_accepted_at).getTime()
+              : new Date(latestPO.created_at).getTime();
             const now = Date.now();
             const elapsed = now - created;
             const withinWindow = elapsed < 30000;
@@ -507,25 +508,25 @@ const created = job.po_accepted_at
           nextStep = "Final drawing pack is being prepared";
         }
 
-        
-if (job.status === "pack_issued") {
-  nextStep =
-    "Drawing pack issued, please see Technical Files (below). Thank you for your continued business";
-}
+        if (job.status === "pack_issued") {
+          nextStep =
+            "Drawing pack issued, please see Technical Files (below). Thank you for your continued business";
+        }
 
-if (job.status === "complete") {
-  nextStep = "Job complete. Thank you for your business";
+        if (job.status === "complete") {
+          nextStep = "Job complete. Thank you for your business";
 
-  actionHtml = `
-    <div style="margin-top:10px">
-      ${
-        latestInvoice
-          ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank" rel="noopener noreferrer">View Invoice</a>`
-          : ""
-      }
-    </div>
-  `;
-}
+          actionHtml = `
+            <div style="margin-top:10px">
+              ${
+                latestInvoice
+                  ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank" rel="noopener noreferrer">View Invoice</a>`
+                  : ""
+              }
+            </div>
+          `;
+        }
+
         return `
           <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
             <div style="font-weight:700;color:#edf1f4">${job.job_ref}</div>
@@ -550,24 +551,13 @@ if (job.status === "complete") {
       })
       .join("");
 
-  setTimeout(function () {
-    document.querySelectorAll("[data-download-technical]").forEach(function (link) {
-      link.onclick = async function (event) {
-        event.preventDefault();
-
-        const fileId = link.getAttribute("data-download-technical");
-        const file = portalState.technicalFiles.find(function (item) {
-          return String(item.id) === String(fileId);
-        });
-
-        await logFileDownload("technical", file);
-
-        if (file && file.downloadUrl && file.downloadUrl !== "#") {
-          window.open(file.downloadUrl, "_blank", "noopener,noreferrer");
-        }
-      };
-    });
-  }, 50);
+    setTimeout(function () {
+      document.querySelectorAll("[data-accept-job]").forEach(function (btn) {
+        btn.onclick = async function () {
+          const jobId = btn.getAttribute("data-accept-job");
+          const job = portalState.jobs.find(function (j) {
+            return String(j.id) === String(jobId);
+          });
 
           if (!job) return;
 
@@ -578,21 +568,21 @@ if (job.status === "complete") {
         };
       });
 
-document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
-  btn.onclick = async function () {
-    const jobId = btn.getAttribute("data-upload-po");
-    const job = portalState.jobs.find(function (j) {
-      return String(j.id) === String(jobId);
-    });
-    const input = document.querySelector(`[data-po-input="${jobId}"]`);
+      document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
+        btn.onclick = async function () {
+          const jobId = btn.getAttribute("data-upload-po");
+          const job = portalState.jobs.find(function (j) {
+            return String(j.id) === String(jobId);
+          });
+          const input = document.querySelector(`[data-po-input="${jobId}"]`);
 
-    if (!job || !input || !input.files || !input.files[0]) {
-      return;
-    }
+          if (!job || !input || !input.files || !input.files[0]) {
+            return;
+          }
 
-    await handlePoUpload(job, portalState.profile, input.files[0]);
-  };
-});
+          await handlePoUpload(job, portalState.profile, input.files[0]);
+        };
+      });
 
       document.querySelectorAll("[data-delete-po]").forEach(function (btn) {
         btn.onclick = async function () {
@@ -630,21 +620,21 @@ document.querySelectorAll("[data-upload-po]").forEach(function (btn) {
       });
     }, 100);
 
-const awaitingPoJob = visibleJobs.find(function (job) {
-  if (job.status !== "awaiting_po") return false;
+    const awaitingPoJob = visibleJobs.find(function (job) {
+      if (job.status !== "awaiting_po") return false;
 
-  const poDoc = portalState.commercialFiles.find(function (file) {
-    return String(file.job_id) === String(job.id) && file.document_kind === "po";
-  });
+      const poDoc = portalState.commercialFiles.find(function (file) {
+        return String(file.job_id) === String(job.id) && file.document_kind === "po";
+      });
 
-  if (!poDoc) return false;
+      if (!poDoc) return false;
 
-  const created = job.po_accepted_at
-    ? new Date(job.po_accepted_at).getTime()
-    : new Date(poDoc.created_at).getTime();
+      const created = job.po_accepted_at
+        ? new Date(job.po_accepted_at).getTime()
+        : new Date(poDoc.created_at).getTime();
 
-  return Date.now() - created < 30000;
-});
+      return Date.now() - created < 30000;
+    });
 
     if (awaitingPoJob) {
       setTimeout(function () {
@@ -653,171 +643,177 @@ const awaitingPoJob = visibleJobs.find(function (job) {
     }
   }
 
-function renderFiles(files) {
-  const el = document.getElementById("filesCardContent");
-  if (!el) {
-    return;
-  }
-
-  if (!files || files.length === 0) {
-    el.innerHTML = "<p>No files available yet</p>";
-    return;
-  }
-
-  const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "revision"]);
-  const matchingFiles = portalState.searchTerm
-    ? sortedFiles.filter(function (file) {
-        return itemMatchesSearch(file, ["title", "file_name", "revision"]);
-      })
-    : sortedFiles;
-
-  const visibleFiles = portalState.showAllFiles
-    ? matchingFiles
-    : matchingFiles.slice(0, 6);
-
-  if (visibleFiles.length === 0) {
-    el.innerHTML = "<p>No matching technical files</p>";
-    return;
-  }
-
-  el.innerHTML = visibleFiles
-    .map(function (file) {
-      const typeLabel = getFileTypeLabel(file);
-      const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
-
-      return `
-        <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
-          <div style="font-weight:700;color:#edf1f4">${file.title}</div>
-          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-            ${badgeHtml(typeLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
-            ${badgeHtml(revisionLabel, "rgba(208,165,47,.28)", "rgba(208,165,47,.12)", "#f0c75a")}
-          </div>
-          <div style="margin-top:8px;font-size:.92rem;color:#a8b2bc">${file.file_name}</div>
-          <div style="margin-top:10px">
-            <a
-              class="btn"
-              href="${file.downloadUrl}"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-download-technical="${file.id}"
-            >Download</a>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-
-  setTimeout(function () {
-    document.querySelectorAll("[data-download-commercial]").forEach(function (link) {
-      link.onclick = async function (event) {
-        event.preventDefault();
-
-        const fileId = link.getAttribute("data-download-commercial");
-        const file = portalState.commercialFiles.find(function (item) {
-          return String(item.id) === String(fileId);
-        });
-
-        await logFileDownload("commercial", file);
-
-        if (file && file.downloadUrl && file.downloadUrl !== "#") {
-          window.open(file.downloadUrl, "_blank", "noopener,noreferrer");
-        }
-      };
-    });
-  }, 50);
-}
-
-function renderCommercial(files) {
-  const el = document.getElementById("commercialCardContent");
-  if (!el) {
-    return;
-  }
-
-  if (!files || files.length === 0) {
-    el.innerHTML = "<p>No commercial documents available yet</p>";
-    return;
-  }
-
-  const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "document_kind"]);
-  const visibleFiles = portalState.searchTerm
-    ? sortedFiles.filter(function (file) {
-        return itemMatchesSearch(file, ["title", "file_name", "document_kind"]);
-      })
-    : sortedFiles;
-
-  if (visibleFiles.length === 0) {
-    el.innerHTML = "<p>No matching commercial documents</p>";
-    return;
-  }
-
-  const filesByJob = {};
-
-  visibleFiles.forEach(function (file) {
-    const key = file.job_id || "unassigned";
-    if (!filesByJob[key]) {
-      filesByJob[key] = [];
+  function renderFiles(files) {
+    const el = document.getElementById("filesCardContent");
+    if (!el) {
+      return;
     }
-    filesByJob[key].push(file);
-  });
 
-  el.innerHTML = Object.keys(filesByJob)
-    .map(function (jobId) {
-      const job = portalState.jobs.find(function (j) {
-        return String(j.id) === String(jobId);
-      });
+    if (!files || files.length === 0) {
+      el.innerHTML = "<p>No files available yet</p>";
+      return;
+    }
 
-      const jobTitle = job ? `${job.job_ref} | ${job.title}` : "General Files";
-      const jobFiles = filesByJob[jobId];
+    const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "revision"]);
+    const matchingFiles = portalState.searchTerm
+      ? sortedFiles.filter(function (file) {
+          return itemMatchesSearch(file, ["title", "file_name", "revision"]);
+        })
+      : sortedFiles;
 
-      return `
-        <div style="margin-bottom:16px">
-          <div style="font-weight:700;color:#79b2ff;margin-bottom:6px">
-            ${jobTitle}
+    const visibleFiles = portalState.showAllFiles
+      ? matchingFiles
+      : matchingFiles.slice(0, 6);
+
+    if (visibleFiles.length === 0) {
+      el.innerHTML = "<p>No matching technical files</p>";
+      return;
+    }
+
+    el.innerHTML = visibleFiles
+      .map(function (file) {
+        const typeLabel = getFileTypeLabel(file);
+        const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
+
+        return `
+          <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+            <div style="font-weight:700;color:#edf1f4">${file.title}</div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              ${badgeHtml(typeLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
+              ${badgeHtml(revisionLabel, "rgba(208,165,47,.28)", "rgba(208,165,47,.12)", "#f0c75a")}
+            </div>
+            <div style="margin-top:8px;font-size:.92rem;color:#a8b2bc">${file.file_name}</div>
+            <div style="margin-top:10px">
+              <a
+                class="btn"
+                href="${file.downloadUrl}"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-download-technical="${file.id}"
+              >Download</a>
+            </div>
           </div>
-          ${jobFiles
-            .map(function (file) {
-              const kindLabel = (file.document_kind || "document").toUpperCase();
-              const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
+        `;
+      })
+      .join("");
 
-              return `
-                <div style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06)">
-                  <div style="font-weight:600;color:#edf1f4">${file.title}</div>
-                  <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
-                    ${badgeHtml(kindLabel, "rgba(214,135,52,.28)", "rgba(214,135,52,.12)", "#f0a85a")}
-                    ${badgeHtml(revisionLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
-                  </div>
-                  <div style="margin-top:6px;font-size:.9rem;color:#a8b2bc">${file.file_name}</div>
-                  <div style="margin-top:8px">
-                    <a
-                      class="btn"
-                      href="${file.downloadUrl}"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-download-commercial="${file.id}"
-                    >Download</a>
-                  </div>
-                </div>
-              `;
-            })
-            .join("")}
-        </div>
-      `;
-    })
-    .join("");
+    setTimeout(function () {
+      document.querySelectorAll("[data-download-technical]").forEach(function (link) {
+        link.onclick = async function (event) {
+          event.preventDefault();
 
-  setTimeout(function () {
-    document.querySelectorAll("[data-download-commercial]").forEach(function (link) {
-      link.onclick = async function () {
-        const fileId = link.getAttribute("data-download-commercial");
-        const file = portalState.commercialFiles.find(function (item) {
-          return String(item.id) === String(fileId);
+          const fileId = link.getAttribute("data-download-technical");
+          const file = portalState.technicalFiles.find(function (item) {
+            return String(item.id) === String(fileId);
+          });
+
+          await logFileDownload("technical", file);
+
+          if (file && file.downloadUrl && file.downloadUrl !== "#") {
+            window.open(file.downloadUrl, "_blank", "noopener,noreferrer");
+          }
+        };
+      });
+    }, 50);
+  }
+
+  function renderCommercial(files) {
+    const el = document.getElementById("commercialCardContent");
+    if (!el) {
+      return;
+    }
+
+    if (!files || files.length === 0) {
+      el.innerHTML = "<p>No commercial documents available yet</p>";
+      return;
+    }
+
+    const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "document_kind"]);
+    const visibleFiles = portalState.searchTerm
+      ? sortedFiles.filter(function (file) {
+          return itemMatchesSearch(file, ["title", "file_name", "document_kind"]);
+        })
+      : sortedFiles;
+
+    if (visibleFiles.length === 0) {
+      el.innerHTML = "<p>No matching commercial documents</p>";
+      return;
+    }
+
+    const filesByJob = {};
+
+    visibleFiles.forEach(function (file) {
+      const key = file.job_id || "unassigned";
+      if (!filesByJob[key]) {
+        filesByJob[key] = [];
+      }
+      filesByJob[key].push(file);
+    });
+
+    el.innerHTML = Object.keys(filesByJob)
+      .map(function (jobId) {
+        const job = portalState.jobs.find(function (j) {
+          return String(j.id) === String(jobId);
         });
 
-        await logFileDownload("commercial", file);
-      };
-    });
-  }, 50);
-}
+        const jobTitle = job ? `${job.job_ref} | ${job.title}` : "General Files";
+        const jobFiles = filesByJob[jobId];
+
+        return `
+          <div style="margin-bottom:16px">
+            <div style="font-weight:700;color:#79b2ff;margin-bottom:6px">
+              ${jobTitle}
+            </div>
+            ${jobFiles
+              .map(function (file) {
+                const kindLabel = (file.document_kind || "document").toUpperCase();
+                const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
+
+                return `
+                  <div style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06)">
+                    <div style="font-weight:600;color:#edf1f4">${file.title}</div>
+                    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+                      ${badgeHtml(kindLabel, "rgba(214,135,52,.28)", "rgba(214,135,52,.12)", "#f0a85a")}
+                      ${badgeHtml(revisionLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
+                    </div>
+                    <div style="margin-top:6px;font-size:.9rem;color:#a8b2bc">${file.file_name}</div>
+                    <div style="margin-top:8px">
+                      <a
+                        class="btn"
+                        href="${file.downloadUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-download-commercial="${file.id}"
+                      >Download</a>
+                    </div>
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
+        `;
+      })
+      .join("");
+
+    setTimeout(function () {
+      document.querySelectorAll("[data-download-commercial]").forEach(function (link) {
+        link.onclick = async function (event) {
+          event.preventDefault();
+
+          const fileId = link.getAttribute("data-download-commercial");
+          const file = portalState.commercialFiles.find(function (item) {
+            return String(item.id) === String(fileId);
+          });
+
+          await logFileDownload("commercial", file);
+
+          if (file && file.downloadUrl && file.downloadUrl !== "#") {
+            window.open(file.downloadUrl, "_blank", "noopener,noreferrer");
+          }
+        };
+      });
+    }, 50);
+  }
 
   function renderMessages(messages) {
     const el = document.getElementById("messagesCardContent");
@@ -844,12 +840,6 @@ function renderCommercial(files) {
 
     el.innerHTML = visibleMessages
       .map(function (message) {
-        const senderLabel = message.is_system
-          ? "System"
-          : message.sender_role === "admin"
-          ? "WMAS"
-          : "Client";
-
         let rfqId = null;
         let requestRef = null;
         const rawBody = message.message_body || "";
@@ -871,10 +861,10 @@ function renderCommercial(files) {
 
         return `
           <div style="padding:12px 14px 12px 0;border-top:1px solid rgba(255,255,255,.08)">
-<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-  <div style="font-weight:700;color:#edf1f4">${subject || "Message"}</div>
-  <div style="font-size:.8rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
-</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <div style="font-weight:700;color:#edf1f4">${subject || "Message"}</div>
+              <div style="font-size:.8rem;color:#a8b2bc">${new Date(message.created_at).toLocaleString()}</div>
+            </div>
             <div style="margin-top:8px;color:#d7dee5;line-height:1.7">${formattedBody}</div>
             ${
               portalState.profile?.role === "admin" &&
@@ -885,91 +875,88 @@ function renderCommercial(files) {
                 ? `<div style="margin-top:10px"><button class="btn" data-rfq="${rfqId || ""}" data-request-ref="${requestRef || ""}">Create Job from RFQ</button></div>`
                 : ""
             }
-            
           </div>
         `;
       })
       .join("");
   }
 
-  
-async function loadFiles(companyId) {
-  const { data, error } = await supabaseClient
-    .from("wmas_job_files")
-    .select("id, company_id, job_id, title, file_name, storage_path, file_type, revision, created_at")
-    .eq("company_id", companyId)
-    .eq("visible_to_client", true)
-    .order("created_at", { ascending: false });
+  async function loadFiles(companyId) {
+    const { data, error } = await supabaseClient
+      .from("wmas_job_files")
+      .select("id, company_id, job_id, title, file_name, storage_path, file_type, revision, created_at")
+      .eq("company_id", companyId)
+      .eq("visible_to_client", true)
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    const el = document.getElementById("filesCardContent");
-    if (el) {
-      el.textContent = "Unable to load files";
+    if (error) {
+      const el = document.getElementById("filesCardContent");
+      if (el) {
+        el.textContent = "Unable to load files";
+      }
+      return;
     }
-    return;
-  }
 
-  const filesWithUrls = await Promise.all(
-    (data || []).map(async function (file) {
-      const { data: signedData } = await supabaseClient.storage
-        .from("wmas-job-files")
-        .createSignedUrl(file.storage_path, 3600);
+    const filesWithUrls = await Promise.all(
+      (data || []).map(async function (file) {
+        const { data: signedData } = await supabaseClient.storage
+          .from("wmas-job-files")
+          .createSignedUrl(file.storage_path, 3600);
 
-      return {
-        ...file,
-        downloadUrl: signedData?.signedUrl || "#"
+        return {
+          ...file,
+          downloadUrl: signedData?.signedUrl || "#"
+        };
+      })
+    );
+
+    portalState.technicalFiles = filesWithUrls;
+    renderFiles(portalState.technicalFiles);
+
+    const expandBtn = document.getElementById("filesExpandBtn");
+    if (expandBtn) {
+      expandBtn.onclick = function () {
+        portalState.showAllFiles = !portalState.showAllFiles;
+        expandBtn.textContent = portalState.showAllFiles ? "Show less" : "View all";
+        renderFiles(portalState.technicalFiles);
       };
-    })
-  );
-
-  portalState.technicalFiles = filesWithUrls;
-  renderFiles(portalState.technicalFiles);
-
-  const expandBtn = document.getElementById("filesExpandBtn");
-  if (expandBtn) {
-    expandBtn.onclick = function () {
-      portalState.showAllFiles = !portalState.showAllFiles;
-      expandBtn.textContent = portalState.showAllFiles ? "Show less" : "View all";
-      renderFiles(portalState.technicalFiles);
-    };
-  }
-}
-
-
-async function loadCommercial(companyId) {
-  const { data, error } = await supabaseClient
-    .from("wmas_commercial_files")
-    .select("id, company_id, job_id, quote_id, title, document_kind, file_name, storage_path, file_type, revision, created_at")
-    .eq("company_id", companyId)
-    .eq("visible_to_client", true)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    const el = document.getElementById("commercialCardContent");
-    if (el) {
-      el.textContent = "Unable to load commercial documents";
     }
-    return [];
   }
 
-  const docsWithUrls = await Promise.all(
-    (data || []).map(async function (file) {
-      const { data: signedData } = await supabaseClient.storage
-        .from("wmas-commercial-files")
-        .createSignedUrl(file.storage_path, 3600);
+  async function loadCommercial(companyId) {
+    const { data, error } = await supabaseClient
+      .from("wmas_commercial_files")
+      .select("id, company_id, job_id, quote_id, title, document_kind, file_name, storage_path, file_type, revision, created_at")
+      .eq("company_id", companyId)
+      .eq("visible_to_client", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false });
 
-      return {
-        ...file,
-        downloadUrl: signedData?.signedUrl || "#"
-      };
-    })
-  );
+    if (error) {
+      const el = document.getElementById("commercialCardContent");
+      if (el) {
+        el.textContent = "Unable to load commercial documents";
+      }
+      return [];
+    }
 
-  portalState.commercialFiles = docsWithUrls;
-  renderCommercial(portalState.commercialFiles);
-  return portalState.commercialFiles;
-}
+    const docsWithUrls = await Promise.all(
+      (data || []).map(async function (file) {
+        const { data: signedData } = await supabaseClient.storage
+          .from("wmas-commercial-files")
+          .createSignedUrl(file.storage_path, 3600);
+
+        return {
+          ...file,
+          downloadUrl: signedData?.signedUrl || "#"
+        };
+      })
+    );
+
+    portalState.commercialFiles = docsWithUrls;
+    renderCommercial(portalState.commercialFiles);
+    return portalState.commercialFiles;
+  }
 
   async function loadMessages(companyId) {
     const { data, error } = await supabaseClient
@@ -1047,23 +1034,23 @@ async function loadCommercial(companyId) {
     });
   }
 
-async function logFileDownload(fileCategory, file) {
-  if (!portalState.profile || !file) {
-    return;
-  }
+  async function logFileDownload(fileCategory, file) {
+    if (!portalState.profile || !file) {
+      return;
+    }
 
-  await supabaseClient
-    .from("wmas_file_downloads")
-    .insert({
-      company_id: file.company_id || portalState.profile.company_id || null,
-      job_id: file.job_id || null,
-      file_category: fileCategory,
-      file_title: file.title || "",
-      file_name: file.file_name || "",
-      storage_path: file.storage_path || "",
-      downloaded_by: portalState.profile.id
-    });
-}
+    await supabaseClient
+      .from("wmas_file_downloads")
+      .insert({
+        company_id: file.company_id || portalState.profile.company_id || null,
+        job_id: file.job_id || null,
+        file_category: fileCategory,
+        file_title: file.title || "",
+        file_name: file.file_name || "",
+        storage_path: file.storage_path || "",
+        downloaded_by: portalState.profile.id
+      });
+  }
 
   async function handleAcceptQuote(job, userId) {
     const statusEl = document.getElementById("commercialActionStatus");
@@ -1182,12 +1169,12 @@ async function logFileDownload(fileCategory, file) {
     }
 
     await supabaseClient
-  .from("wmas_jobs")
-  .update({
-    po_accepted_at: new Date().toISOString()
-  })
-  .eq("id", job.id);
-    
+      .from("wmas_jobs")
+      .update({
+        po_accepted_at: new Date().toISOString()
+      })
+      .eq("id", job.id);
+
     await insertJobEvent(
       job,
       "po_uploaded",
@@ -1279,10 +1266,10 @@ async function logFileDownload(fileCategory, file) {
 
     selectEl.onchange = async function () {
       const selectedId = selectEl.value;
-portalState.adminTargetCompany =
-  portalState.adminCompanies.find(function (company) {
-    return String(company.id) === String(selectedId);
-  }) || null;
+      portalState.adminTargetCompany =
+        portalState.adminCompanies.find(function (company) {
+          return String(company.id) === String(selectedId);
+        }) || null;
 
       const subtextEl = document.getElementById("portalSubtext");
       if (subtextEl && portalState.adminTargetCompany) {
@@ -1293,43 +1280,65 @@ portalState.adminTargetCompany =
     };
   }
 
+  async function handleAdminCommercialFiles() {
+    const companySelect = document.getElementById("adminCommercialCompany");
+    const categorySelect = document.getElementById("adminDeleteFileCategory");
+    const fileSelect = document.getElementById("adminCommercialFile");
+    const deleteBtn = document.getElementById("adminDeleteCommercialBtn");
+    const statusEl = document.getElementById("adminCommercialStatus");
 
-
-async function handleAdminCommercialFiles() {
-  const companySelect = document.getElementById("adminCommercialCompany");
-  const categorySelect = document.getElementById("adminDeleteFileCategory");
-  const fileSelect = document.getElementById("adminCommercialFile");
-  const deleteBtn = document.getElementById("adminDeleteCommercialBtn");
-  const statusEl = document.getElementById("adminCommercialStatus");
-
-  if (!companySelect || !categorySelect || !fileSelect || !deleteBtn || !statusEl) {
-    return;
-  }
-
-  function loadCompanies() {
-    companySelect.innerHTML = portalState.adminCompanies
-      .map(function (company) {
-        return `<option value="${company.id}">${company.name}</option>`;
-      })
-      .join("");
-
-    if (portalState.adminTargetCompany) {
-      companySelect.value = portalState.adminTargetCompany.id;
-    }
-  }
-
-  async function loadFilesForCompany() {
-    const companyId = companySelect.value;
-    const category = categorySelect.value;
-
-    if (!companyId) {
-      fileSelect.innerHTML = `<option value="">No company selected</option>`;
+    if (!companySelect || !categorySelect || !fileSelect || !deleteBtn || !statusEl) {
       return;
     }
 
-    if (category === "technical") {
+    function loadCompanies() {
+      companySelect.innerHTML = portalState.adminCompanies
+        .map(function (company) {
+          return `<option value="${company.id}">${company.name}</option>`;
+        })
+        .join("");
+
+      if (portalState.adminTargetCompany) {
+        companySelect.value = portalState.adminTargetCompany.id;
+      }
+    }
+
+    async function loadFilesForCompany() {
+      const companyId = companySelect.value;
+      const category = categorySelect.value;
+
+      if (!companyId) {
+        fileSelect.innerHTML = `<option value="">No company selected</option>`;
+        return;
+      }
+
+      if (category === "technical") {
+        const { data: files, error } = await supabaseClient
+          .from("wmas_job_files")
+          .select("id, title, file_name, storage_path")
+          .eq("company_id", companyId)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          fileSelect.innerHTML = `<option value="">Unable to load files</option>`;
+          return;
+        }
+
+        fileSelect.innerHTML = (files || [])
+          .map(function (file) {
+            return `<option value="${file.id}" data-path="${file.storage_path}">${file.title} | ${file.file_name}</option>`;
+          })
+          .join("");
+
+        if (!files || !files.length) {
+          fileSelect.innerHTML = `<option value="">No files found</option>`;
+        }
+
+        return;
+      }
+
       const { data: files, error } = await supabaseClient
-        .from("wmas_job_files")
+        .from("wmas_commercial_files")
         .select("id, title, file_name, storage_path")
         .eq("company_id", companyId)
         .order("created_at", { ascending: false });
@@ -1348,269 +1357,243 @@ async function handleAdminCommercialFiles() {
       if (!files || !files.length) {
         fileSelect.innerHTML = `<option value="">No files found</option>`;
       }
-
-      return;
     }
 
-    const { data: files, error } = await supabaseClient
-      .from("wmas_commercial_files")
-      .select("id, title, file_name, storage_path")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
+    companySelect.onchange = async function () {
+      await loadFilesForCompany();
+    };
 
-    if (error) {
-      fileSelect.innerHTML = `<option value="">Unable to load files</option>`;
-      return;
-    }
+    categorySelect.onchange = async function () {
+      await loadFilesForCompany();
+    };
 
-    fileSelect.innerHTML = (files || [])
-      .map(function (file) {
-        return `<option value="${file.id}" data-path="${file.storage_path}">${file.title} | ${file.file_name}</option>`;
-      })
-      .join("");
+    deleteBtn.onclick = async function () {
+      const fileId = fileSelect.value;
+      const selected = fileSelect.selectedOptions[0];
+      const storagePath = selected ? selected.getAttribute("data-path") : "";
+      const category = categorySelect.value;
 
-    if (!files || !files.length) {
-      fileSelect.innerHTML = `<option value="">No files found</option>`;
-    }
-  }
-
-  companySelect.onchange = async function () {
-    await loadFilesForCompany();
-  };
-
-  categorySelect.onchange = async function () {
-    await loadFilesForCompany();
-  };
-
-  deleteBtn.onclick = async function () {
-    const fileId = fileSelect.value;
-    const selected = fileSelect.selectedOptions[0];
-    const storagePath = selected ? selected.getAttribute("data-path") : "";
-    const category = categorySelect.value;
-
-    if (!fileId || !storagePath) {
-      statusEl.textContent = "Select a file";
-      return;
-    }
-
-    const confirmed = window.confirm("Delete this file?");
-    if (!confirmed) {
-      return;
-    }
-
-    statusEl.textContent = "Deleting file";
-
-    const bucketName =
-      category === "technical"
-        ? "wmas-job-files"
-        : "wmas-commercial-files";
-
-    const tableName =
-      category === "technical"
-        ? "wmas_job_files"
-        : "wmas_commercial_files";
-
-    const deleteStorageResult = await supabaseClient.storage
-      .from(bucketName)
-      .remove([storagePath]);
-
-    if (deleteStorageResult.error) {
-      statusEl.textContent =
-        deleteStorageResult.error.message || "Unable to delete file from storage";
-      return;
-    }
-
-    const deleteRowResult = await supabaseClient
-      .from(tableName)
-      .delete()
-      .eq("id", fileId);
-
-    if (deleteRowResult.error) {
-      statusEl.textContent =
-        deleteRowResult.error.message || "Unable to delete file record";
-      return;
-    }
-
-    statusEl.textContent = "File deleted";
-    await reloadPortalData();
-    await loadFilesForCompany();
-  };
-
-  loadCompanies();
-  await loadFilesForCompany();
-}
-
-
-async function handleAdminUploadJobFile() {
-  const companySelect = document.getElementById("adminFileCompany");
-  const jobSelect = document.getElementById("adminFileJob");
-  const titleEl = document.getElementById("adminFileTitle");
-  const categoryEl = document.getElementById("adminFileCategory");
-  const revisionEl = document.getElementById("adminFileRevision");
-  const documentKindEl = document.getElementById("adminFileDocumentKind");
-  const fileEl = document.getElementById("adminFileUpload");
-  const uploadBtn = document.getElementById("adminUploadJobFileBtn");
-  const statusEl = document.getElementById("adminUploadJobFileStatus");
-
-  if (
-    !companySelect ||
-    !jobSelect ||
-    !titleEl ||
-    !categoryEl ||
-    !revisionEl ||
-    !documentKindEl ||
-    !fileEl ||
-    !uploadBtn ||
-    !statusEl
-  ) {
-    return;
-  }
-
-  function loadCompanies() {
-    companySelect.innerHTML = portalState.adminCompanies
-      .map(function (company) {
-        return `<option value="${company.id}">${company.name}</option>`;
-      })
-      .join("");
-
-    if (portalState.adminTargetCompany) {
-      companySelect.value = portalState.adminTargetCompany.id;
-    }
-  }
-
-  async function loadJobsForCompany() {
-    const companyId = companySelect.value;
-
-    const { data: jobs } = await supabaseClient
-      .from("wmas_jobs")
-      .select("id, job_ref, title")
-      .eq("company_id", companyId)
-      .order("started_at", { ascending: false });
-
-    jobSelect.innerHTML = (jobs || [])
-      .map(function (job) {
-        return `<option value="${job.id}" data-job-ref="${job.job_ref}">${job.job_ref} | ${job.title}</option>`;
-      })
-      .join("");
-
-    if (!jobs || !jobs.length) {
-      jobSelect.innerHTML = `<option value="">No jobs found</option>`;
-    }
-  }
-
-  companySelect.onchange = async function () {
-    await loadJobsForCompany();
-  };
-
-  uploadBtn.onclick = async function () {
-    const companyId = companySelect.value;
-    const jobId = jobSelect.value;
-    const selectedJob = jobSelect.selectedOptions[0];
-    const title = titleEl.value.trim();
-    const category = categoryEl.value;
-    const revision = revisionEl.value.trim() || "A";
-    const documentKind = documentKindEl.value;
-    const file = fileEl.files?.[0] || null;
-
-    if (!companyId || !jobId || !selectedJob || !file) {
-      statusEl.textContent = "Select company, job and file";
-      return;
-    }
-
-    const jobRef = selectedJob.getAttribute("data-job-ref") || "";
-    if (!jobRef) {
-      statusEl.textContent = "Unable to determine job reference";
-      return;
-    }
-
-    const { data: companyRow } = await supabaseClient
-      .from("wmas_companies")
-      .select("slug")
-      .eq("id", companyId)
-      .single();
-
-    if (!companyRow?.slug) {
-      statusEl.textContent = "Unable to determine company slug";
-      return;
-    }
-
-    const safeFileName = file.name.replace(/\s+/g, "_");
-    const objectPath = `${companyRow.slug}/${jobRef}_${safeFileName}`;
-
-    const bucketName =
-      category === "commercial"
-        ? "wmas-commercial-files"
-        : "wmas-job-files";
-
-    statusEl.textContent = "Uploading file";
-
-    const uploadResult = await supabaseClient.storage
-      .from(bucketName)
-      .upload(objectPath, file, { upsert: false });
-
-    if (uploadResult.error) {
-      statusEl.textContent = uploadResult.error.message || "Upload failed";
-      return;
-    }
-
-    if (category === "commercial") {
-      const insertResult = await supabaseClient
-        .from("wmas_commercial_files")
-        .insert({
-          company_id: companyId,
-          job_id: jobId,
-          title: title || `${jobRef} File`,
-          document_kind: documentKind || "document",
-          file_name: file.name,
-          storage_path: objectPath,
-          file_type: file.type || "application/octet-stream",
-          revision: revision,
-          visible_to_client: true,
-          uploaded_by: portalState.profile.id,
-          status: "issued",
-          sort_order: 50
-        });
-
-      if (insertResult.error) {
-        statusEl.textContent = insertResult.error.message || "Unable to register file";
+      if (!fileId || !storagePath) {
+        statusEl.textContent = "Select a file";
         return;
       }
-    } else {
-      const insertResult = await supabaseClient
-        .from("wmas_job_files")
-        .insert({
-          company_id: companyId,
-          job_id: jobId,
-          title: title || `${jobRef} File`,
-          file_name: file.name,
-          storage_path: objectPath,
-          file_type: file.type || "application/octet-stream",
-          revision: revision,
-          visible_to_client: true,
-          uploaded_by: portalState.profile.id
-        });
 
-      if (insertResult.error) {
-        statusEl.textContent = insertResult.error.message || "Unable to register file";
+      const confirmed = window.confirm("Delete this file?");
+      if (!confirmed) {
         return;
+      }
+
+      statusEl.textContent = "Deleting file";
+
+      const bucketName =
+        category === "technical"
+          ? "wmas-job-files"
+          : "wmas-commercial-files";
+
+      const tableName =
+        category === "technical"
+          ? "wmas_job_files"
+          : "wmas_commercial_files";
+
+      const deleteStorageResult = await supabaseClient.storage
+        .from(bucketName)
+        .remove([storagePath]);
+
+      if (deleteStorageResult.error) {
+        statusEl.textContent =
+          deleteStorageResult.error.message || "Unable to delete file from storage";
+        return;
+      }
+
+      const deleteRowResult = await supabaseClient
+        .from(tableName)
+        .delete()
+        .eq("id", fileId);
+
+      if (deleteRowResult.error) {
+        statusEl.textContent =
+          deleteRowResult.error.message || "Unable to delete file record";
+        return;
+      }
+
+      statusEl.textContent = "File deleted";
+      await reloadPortalData();
+      await loadFilesForCompany();
+    };
+
+    loadCompanies();
+    await loadFilesForCompany();
+  }
+
+  async function handleAdminUploadJobFile() {
+    const companySelect = document.getElementById("adminFileCompany");
+    const jobSelect = document.getElementById("adminFileJob");
+    const titleEl = document.getElementById("adminFileTitle");
+    const categoryEl = document.getElementById("adminFileCategory");
+    const revisionEl = document.getElementById("adminFileRevision");
+    const documentKindEl = document.getElementById("adminFileDocumentKind");
+    const fileEl = document.getElementById("adminFileUpload");
+    const uploadBtn = document.getElementById("adminUploadJobFileBtn");
+    const statusEl = document.getElementById("adminUploadJobFileStatus");
+
+    if (
+      !companySelect ||
+      !jobSelect ||
+      !titleEl ||
+      !categoryEl ||
+      !revisionEl ||
+      !documentKindEl ||
+      !fileEl ||
+      !uploadBtn ||
+      !statusEl
+    ) {
+      return;
+    }
+
+    function loadCompanies() {
+      companySelect.innerHTML = portalState.adminCompanies
+        .map(function (company) {
+          return `<option value="${company.id}">${company.name}</option>`;
+        })
+        .join("");
+
+      if (portalState.adminTargetCompany) {
+        companySelect.value = portalState.adminTargetCompany.id;
       }
     }
 
-    titleEl.value = "";
-    revisionEl.value = "A";
-    documentKindEl.value = "";
-    fileEl.value = "";
+    async function loadJobsForCompany() {
+      const companyId = companySelect.value;
 
-    statusEl.textContent = "File uploaded";
-    await reloadPortalData();
+      const { data: jobs } = await supabaseClient
+        .from("wmas_jobs")
+        .select("id, job_ref, title")
+        .eq("company_id", companyId)
+        .order("started_at", { ascending: false });
+
+      jobSelect.innerHTML = (jobs || [])
+        .map(function (job) {
+          return `<option value="${job.id}" data-job-ref="${job.job_ref}">${job.job_ref} | ${job.title}</option>`;
+        })
+        .join("");
+
+      if (!jobs || !jobs.length) {
+        jobSelect.innerHTML = `<option value="">No jobs found</option>`;
+      }
+    }
+
+    companySelect.onchange = async function () {
+      await loadJobsForCompany();
+    };
+
+    uploadBtn.onclick = async function () {
+      const companyId = companySelect.value;
+      const jobId = jobSelect.value;
+      const selectedJob = jobSelect.selectedOptions[0];
+      const title = titleEl.value.trim();
+      const category = categoryEl.value;
+      const revision = revisionEl.value.trim() || "A";
+      const documentKind = documentKindEl.value;
+      const file = fileEl.files?.[0] || null;
+
+      if (!companyId || !jobId || !selectedJob || !file) {
+        statusEl.textContent = "Select company, job and file";
+        return;
+      }
+
+      const jobRef = selectedJob.getAttribute("data-job-ref") || "";
+      if (!jobRef) {
+        statusEl.textContent = "Unable to determine job reference";
+        return;
+      }
+
+      const { data: companyRow } = await supabaseClient
+        .from("wmas_companies")
+        .select("slug")
+        .eq("id", companyId)
+        .single();
+
+      if (!companyRow?.slug) {
+        statusEl.textContent = "Unable to determine company slug";
+        return;
+      }
+
+      const safeFileName = file.name.replace(/\s+/g, "_");
+      const objectPath = `${companyRow.slug}/${jobRef}_${safeFileName}`;
+
+      const bucketName =
+        category === "commercial"
+          ? "wmas-commercial-files"
+          : "wmas-job-files";
+
+      statusEl.textContent = "Uploading file";
+
+      const uploadResult = await supabaseClient.storage
+        .from(bucketName)
+        .upload(objectPath, file, { upsert: false });
+
+      if (uploadResult.error) {
+        statusEl.textContent = uploadResult.error.message || "Upload failed";
+        return;
+      }
+
+      if (category === "commercial") {
+        const insertResult = await supabaseClient
+          .from("wmas_commercial_files")
+          .insert({
+            company_id: companyId,
+            job_id: jobId,
+            title: title || `${jobRef} File`,
+            document_kind: documentKind || "document",
+            file_name: file.name,
+            storage_path: objectPath,
+            file_type: file.type || "application/octet-stream",
+            revision: revision,
+            visible_to_client: true,
+            uploaded_by: portalState.profile.id,
+            status: "issued",
+            sort_order: 50
+          });
+
+        if (insertResult.error) {
+          statusEl.textContent = insertResult.error.message || "Unable to register file";
+          return;
+        }
+      } else {
+        const insertResult = await supabaseClient
+          .from("wmas_job_files")
+          .insert({
+            company_id: companyId,
+            job_id: jobId,
+            title: title || `${jobRef} File`,
+            file_name: file.name,
+            storage_path: objectPath,
+            file_type: file.type || "application/octet-stream",
+            revision: revision,
+            visible_to_client: true,
+            uploaded_by: portalState.profile.id
+          });
+
+        if (insertResult.error) {
+          statusEl.textContent = insertResult.error.message || "Unable to register file";
+          return;
+        }
+      }
+
+      titleEl.value = "";
+      revisionEl.value = "A";
+      documentKindEl.value = "";
+      fileEl.value = "";
+
+      statusEl.textContent = "File uploaded";
+      await reloadPortalData();
+      await loadJobsForCompany();
+    };
+
+    loadCompanies();
     await loadJobsForCompany();
-  };
+  }
 
-  loadCompanies();
-  await loadJobsForCompany();
-}
-
- 
   async function handleAdminManageJobs() {
     const companySelect = document.getElementById("adminManageCompany");
     const jobSelect = document.getElementById("adminManageJob");
@@ -2241,19 +2224,18 @@ async function handleAdminUploadJobFile() {
     }
 
     welcomeEl.textContent = `Welcome, ${profile.preferred_name || profile.full_name || "Client"}`;
-    
-bindSearch();
 
-if (portalState.profile.role === "admin") {
-  await handleAdminCreateJob();
-  await handleAdminManageJobs();
-  await handleAdminCommercialFiles();
-  await handleAdminUploadJobFile();
-}
+    bindSearch();
 
-await reloadPortalData();
+    if (portalState.profile.role === "admin") {
+      await handleAdminCreateJob();
+      await handleAdminManageJobs();
+      await handleAdminCommercialFiles();
+      await handleAdminUploadJobFile();
+    }
 
-    
+    await reloadPortalData();
+
     if (portalState.profile.role === "admin") {
       const clientForm = document.getElementById("requestQuoteCard");
       const adminPanel = document.getElementById("adminQuotePanel");
