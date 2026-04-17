@@ -550,13 +550,24 @@ if (job.status === "complete") {
       })
       .join("");
 
-    setTimeout(function () {
-      document.querySelectorAll("[data-accept-job]").forEach(function (btn) {
-        btn.onclick = async function () {
-          const jobId = btn.getAttribute("data-accept-job");
-          const job = portalState.jobs.find(function (j) {
-            return String(j.id) === String(jobId);
-          });
+  setTimeout(function () {
+    document.querySelectorAll("[data-download-technical]").forEach(function (link) {
+      link.onclick = async function (event) {
+        event.preventDefault();
+
+        const fileId = link.getAttribute("data-download-technical");
+        const file = portalState.technicalFiles.find(function (item) {
+          return String(item.id) === String(fileId);
+        });
+
+        await logFileDownload("technical", file);
+
+        if (file && file.downloadUrl && file.downloadUrl !== "#") {
+          window.open(file.downloadUrl, "_blank", "noopener,noreferrer");
+        }
+      };
+    });
+  }, 50);
 
           if (!job) return;
 
@@ -697,14 +708,20 @@ function renderFiles(files) {
     .join("");
 
   setTimeout(function () {
-    document.querySelectorAll("[data-download-technical]").forEach(function (link) {
-      link.onclick = async function () {
-        const fileId = link.getAttribute("data-download-technical");
-        const file = portalState.technicalFiles.find(function (item) {
+    document.querySelectorAll("[data-download-commercial]").forEach(function (link) {
+      link.onclick = async function (event) {
+        event.preventDefault();
+
+        const fileId = link.getAttribute("data-download-commercial");
+        const file = portalState.commercialFiles.find(function (item) {
           return String(item.id) === String(fileId);
         });
 
-        await logFileDownload("technical", file);
+        await logFileDownload("commercial", file);
+
+        if (file && file.downloadUrl && file.downloadUrl !== "#") {
+          window.open(file.downloadUrl, "_blank", "noopener,noreferrer");
+        }
       };
     });
   }, 50);
