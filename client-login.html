@@ -47,21 +47,43 @@
       <div class="form-panel">
         <h2>Sign in</h2>
         <p class="muted">Use your approved email address and password to access the WMAS client portal</p>
+<form id="clientLoginForm">
+  <div class="form-group">
+    <label for="loginEmail">Email</label>
+    <input id="loginEmail" name="email" type="email" autocomplete="email" required>
+  </div>
 
-        <form id="clientLoginForm">
-          <div class="form-group">
-            <label for="loginEmail">Email</label>
-            <input id="loginEmail" name="email" type="email" autocomplete="email" required>
-          </div>
+  <div class="form-group" style="margin-top:16px">
+    <label for="loginPassword">Password</label>
+    <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+  </div>
 
-          <div class="form-group" style="margin-top:16px">
-            <label for="loginPassword">Password</label>
-            <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
-          </div>
+  <div class="cta-row" style="margin-top:20px">
+    <button class="btn btn-primary" type="submit">Sign In</button>
+  </div>
 
-          <div class="cta-row" style="margin-top:20px">
-            <button class="btn btn-primary" type="submit">Sign In</button>
-          </div>
+  <div style="margin-top:14px">
+    <button id="forgotPasswordBtn" class="btn" type="button">Forgot Password</button>
+  </div>
+
+  <div id="resetPasswordWrap" style="display:none;margin-top:18px">
+    <div class="form-group">
+      <label for="resetPassword">New password</label>
+      <input id="resetPassword" type="password" autocomplete="new-password">
+    </div>
+
+    <div class="form-group" style="margin-top:16px">
+      <label for="resetPasswordConfirm">Confirm new password</label>
+      <input id="resetPasswordConfirm" type="password" autocomplete="new-password">
+    </div>
+
+    <div class="cta-row" style="margin-top:20px">
+      <button id="updatePasswordBtn" class="btn btn-primary" type="button">Set New Password</button>
+    </div>
+  </div>
+
+  <div id="loginStatus" class="notice" style="margin-top:16px">Enter your email and password to continue</div>
+</form>
 
           <div id="loginStatus" class="notice" style="margin-top:16px">Enter your email and password to continue</div>
         </form>
