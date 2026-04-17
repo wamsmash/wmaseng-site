@@ -642,127 +642,165 @@ const awaitingPoJob = visibleJobs.find(function (job) {
     }
   }
 
-  function renderFiles(files) {
-    const el = document.getElementById("filesCardContent");
-    if (!el) {
-      return;
-    }
-
-    if (!files || files.length === 0) {
-      el.innerHTML = "<p>No files available yet</p>";
-      return;
-    }
-
-    const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "revision"]);
-    const matchingFiles = portalState.searchTerm
-      ? sortedFiles.filter(function (file) {
-          return itemMatchesSearch(file, ["title", "file_name", "revision"]);
-        })
-      : sortedFiles;
-
-    const visibleFiles = portalState.showAllFiles
-      ? matchingFiles
-      : matchingFiles.slice(0, 6);
-
-    if (visibleFiles.length === 0) {
-      el.innerHTML = "<p>No matching technical files</p>";
-      return;
-    }
-
-    el.innerHTML = visibleFiles
-      .map(function (file) {
-        const typeLabel = getFileTypeLabel(file);
-        const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
-
-        return `
-          <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
-            <div style="font-weight:700;color:#edf1f4">${file.title}</div>
-            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-              ${badgeHtml(typeLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
-              ${badgeHtml(revisionLabel, "rgba(208,165,47,.28)", "rgba(208,165,47,.12)", "#f0c75a")}
-            </div>
-            <div style="margin-top:8px;font-size:.92rem;color:#a8b2bc">${file.file_name}</div>
-            <div style="margin-top:10px">
-              <a class="btn" href="${file.downloadUrl}" target="_blank" rel="noopener noreferrer">Download</a>
-            </div>
-          </div>
-        `;
-      })
-      .join("");
+function renderFiles(files) {
+  const el = document.getElementById("filesCardContent");
+  if (!el) {
+    return;
   }
 
-  function renderCommercial(files) {
-    const el = document.getElementById("commercialCardContent");
-    if (!el) {
-      return;
-    }
+  if (!files || files.length === 0) {
+    el.innerHTML = "<p>No files available yet</p>";
+    return;
+  }
 
-    if (!files || files.length === 0) {
-      el.innerHTML = "<p>No commercial documents available yet</p>";
-      return;
-    }
+  const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "revision"]);
+  const matchingFiles = portalState.searchTerm
+    ? sortedFiles.filter(function (file) {
+        return itemMatchesSearch(file, ["title", "file_name", "revision"]);
+      })
+    : sortedFiles;
 
-    const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "document_kind"]);
-    const visibleFiles = portalState.searchTerm
-      ? sortedFiles.filter(function (file) {
-          return itemMatchesSearch(file, ["title", "file_name", "document_kind"]);
-        })
-      : sortedFiles;
+  const visibleFiles = portalState.showAllFiles
+    ? matchingFiles
+    : matchingFiles.slice(0, 6);
 
-    if (visibleFiles.length === 0) {
-      el.innerHTML = "<p>No matching commercial documents</p>";
-      return;
-    }
+  if (visibleFiles.length === 0) {
+    el.innerHTML = "<p>No matching technical files</p>";
+    return;
+  }
 
-    const filesByJob = {};
+  el.innerHTML = visibleFiles
+    .map(function (file) {
+      const typeLabel = getFileTypeLabel(file);
+      const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
 
-    visibleFiles.forEach(function (file) {
-      const key = file.job_id || "unassigned";
-      if (!filesByJob[key]) {
-        filesByJob[key] = [];
-      }
-      filesByJob[key].push(file);
-    });
+      return `
+        <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08)">
+          <div style="font-weight:700;color:#edf1f4">${file.title}</div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            ${badgeHtml(typeLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
+            ${badgeHtml(revisionLabel, "rgba(208,165,47,.28)", "rgba(208,165,47,.12)", "#f0c75a")}
+          </div>
+          <div style="margin-top:8px;font-size:.92rem;color:#a8b2bc">${file.file_name}</div>
+          <div style="margin-top:10px">
+            <a
+              class="btn"
+              href="${file.downloadUrl}"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-download-technical="${file.id}"
+            >Download</a>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
 
-    el.innerHTML = Object.keys(filesByJob)
-      .map(function (jobId) {
-        const job = portalState.jobs.find(function (j) {
-          return String(j.id) === String(jobId);
+  setTimeout(function () {
+    document.querySelectorAll("[data-download-technical]").forEach(function (link) {
+      link.onclick = async function () {
+        const fileId = link.getAttribute("data-download-technical");
+        const file = portalState.technicalFiles.find(function (item) {
+          return String(item.id) === String(fileId);
         });
 
-        const jobTitle = job ? `${job.job_ref} | ${job.title}` : "General Files";
-        const jobFiles = filesByJob[jobId];
+        await logFileDownload("technical", file);
+      };
+    });
+  }, 50);
+}
 
-        return `
-          <div style="margin-bottom:16px">
-            <div style="font-weight:700;color:#79b2ff;margin-bottom:6px">
-              ${jobTitle}
-            </div>
-            ${jobFiles
-              .map(function (file) {
-                const kindLabel = (file.document_kind || "document").toUpperCase();
-                const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
-
-                return `
-                  <div style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06)">
-                    <div style="font-weight:600;color:#edf1f4">${file.title}</div>
-                    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
-                      ${badgeHtml(kindLabel, "rgba(214,135,52,.28)", "rgba(214,135,52,.12)", "#f0a85a")}
-                      ${badgeHtml(revisionLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
-                    </div>
-                    <div style="margin-top:6px;font-size:.9rem;color:#a8b2bc">${file.file_name}</div>
-                    <div style="margin-top:8px">
-                      <a class="btn" href="${file.downloadUrl}" target="_blank" rel="noopener noreferrer">Download</a>
-                    </div>
-                  </div>
-                `;
-              })
-              .join("")}
-          </div>
-        `;
-      })
-      .join("");
+function renderCommercial(files) {
+  const el = document.getElementById("commercialCardContent");
+  if (!el) {
+    return;
   }
+
+  if (!files || files.length === 0) {
+    el.innerHTML = "<p>No commercial documents available yet</p>";
+    return;
+  }
+
+  const sortedFiles = sortBySearchMatch(files, ["title", "file_name", "document_kind"]);
+  const visibleFiles = portalState.searchTerm
+    ? sortedFiles.filter(function (file) {
+        return itemMatchesSearch(file, ["title", "file_name", "document_kind"]);
+      })
+    : sortedFiles;
+
+  if (visibleFiles.length === 0) {
+    el.innerHTML = "<p>No matching commercial documents</p>";
+    return;
+  }
+
+  const filesByJob = {};
+
+  visibleFiles.forEach(function (file) {
+    const key = file.job_id || "unassigned";
+    if (!filesByJob[key]) {
+      filesByJob[key] = [];
+    }
+    filesByJob[key].push(file);
+  });
+
+  el.innerHTML = Object.keys(filesByJob)
+    .map(function (jobId) {
+      const job = portalState.jobs.find(function (j) {
+        return String(j.id) === String(jobId);
+      });
+
+      const jobTitle = job ? `${job.job_ref} | ${job.title}` : "General Files";
+      const jobFiles = filesByJob[jobId];
+
+      return `
+        <div style="margin-bottom:16px">
+          <div style="font-weight:700;color:#79b2ff;margin-bottom:6px">
+            ${jobTitle}
+          </div>
+          ${jobFiles
+            .map(function (file) {
+              const kindLabel = (file.document_kind || "document").toUpperCase();
+              const revisionLabel = file.revision ? `Rev ${file.revision}` : "Rev -";
+
+              return `
+                <div style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06)">
+                  <div style="font-weight:600;color:#edf1f4">${file.title}</div>
+                  <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+                    ${badgeHtml(kindLabel, "rgba(214,135,52,.28)", "rgba(214,135,52,.12)", "#f0a85a")}
+                    ${badgeHtml(revisionLabel, "rgba(124,136,155,.28)", "rgba(124,136,155,.12)", "#d7dee5")}
+                  </div>
+                  <div style="margin-top:6px;font-size:.9rem;color:#a8b2bc">${file.file_name}</div>
+                  <div style="margin-top:8px">
+                    <a
+                      class="btn"
+                      href="${file.downloadUrl}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-download-commercial="${file.id}"
+                    >Download</a>
+                  </div>
+                </div>
+              `;
+            })
+            .join("")}
+        </div>
+      `;
+    })
+    .join("");
+
+  setTimeout(function () {
+    document.querySelectorAll("[data-download-commercial]").forEach(function (link) {
+      link.onclick = async function () {
+        const fileId = link.getAttribute("data-download-commercial");
+        const file = portalState.commercialFiles.find(function (item) {
+          return String(item.id) === String(fileId);
+        });
+
+        await logFileDownload("commercial", file);
+      };
+    });
+  }, 50);
+}
 
   function renderMessages(messages) {
     const el = document.getElementById("messagesCardContent");
@@ -837,82 +875,84 @@ const awaitingPoJob = visibleJobs.find(function (job) {
       .join("");
   }
 
-  async function loadFiles(companyId) {
-    const { data, error } = await supabaseClient
-      .from("wmas_job_files")
-      .select("title, file_name, storage_path, file_type, revision, created_at")
-      .eq("company_id", companyId)
-      .eq("visible_to_client", true)
-      .order("created_at", { ascending: false });
+  
+async function loadFiles(companyId) {
+  const { data, error } = await supabaseClient
+    .from("wmas_job_files")
+    .select("id, company_id, job_id, title, file_name, storage_path, file_type, revision, created_at")
+    .eq("company_id", companyId)
+    .eq("visible_to_client", true)
+    .order("created_at", { ascending: false });
 
-    if (error) {
-      const el = document.getElementById("filesCardContent");
-      if (el) {
-        el.textContent = "Unable to load files";
-      }
-      return;
+  if (error) {
+    const el = document.getElementById("filesCardContent");
+    if (el) {
+      el.textContent = "Unable to load files";
     }
+    return;
+  }
 
-    const filesWithUrls = await Promise.all(
-      (data || []).map(async function (file) {
-        const { data: signedData } = await supabaseClient.storage
-          .from("wmas-job-files")
-          .createSignedUrl(file.storage_path, 3600);
+  const filesWithUrls = await Promise.all(
+    (data || []).map(async function (file) {
+      const { data: signedData } = await supabaseClient.storage
+        .from("wmas-job-files")
+        .createSignedUrl(file.storage_path, 3600);
 
-        return {
-          ...file,
-          downloadUrl: signedData?.signedUrl || "#"
-        };
-      })
-    );
-
-    portalState.technicalFiles = filesWithUrls;
-    renderFiles(portalState.technicalFiles);
-
-    const expandBtn = document.getElementById("filesExpandBtn");
-    if (expandBtn) {
-      expandBtn.onclick = function () {
-        portalState.showAllFiles = !portalState.showAllFiles;
-        expandBtn.textContent = portalState.showAllFiles ? "Show less" : "View all";
-        renderFiles(portalState.technicalFiles);
+      return {
+        ...file,
+        downloadUrl: signedData?.signedUrl || "#"
       };
+    })
+  );
+
+  portalState.technicalFiles = filesWithUrls;
+  renderFiles(portalState.technicalFiles);
+
+  const expandBtn = document.getElementById("filesExpandBtn");
+  if (expandBtn) {
+    expandBtn.onclick = function () {
+      portalState.showAllFiles = !portalState.showAllFiles;
+      expandBtn.textContent = portalState.showAllFiles ? "Show less" : "View all";
+      renderFiles(portalState.technicalFiles);
+    };
+  }
+}
+
+
+async function loadCommercial(companyId) {
+  const { data, error } = await supabaseClient
+    .from("wmas_commercial_files")
+    .select("id, company_id, job_id, quote_id, title, document_kind, file_name, storage_path, file_type, revision, created_at")
+    .eq("company_id", companyId)
+    .eq("visible_to_client", true)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    const el = document.getElementById("commercialCardContent");
+    if (el) {
+      el.textContent = "Unable to load commercial documents";
     }
+    return [];
   }
 
-  async function loadCommercial(companyId) {
-    const { data, error } = await supabaseClient
-      .from("wmas_commercial_files")
-      .select("id, company_id, job_id, quote_id, title, document_kind, file_name, storage_path, file_type, revision, created_at")
-      .eq("company_id", companyId)
-      .eq("visible_to_client", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false });
+  const docsWithUrls = await Promise.all(
+    (data || []).map(async function (file) {
+      const { data: signedData } = await supabaseClient.storage
+        .from("wmas-commercial-files")
+        .createSignedUrl(file.storage_path, 3600);
 
-    if (error) {
-      const el = document.getElementById("commercialCardContent");
-      if (el) {
-        el.textContent = "Unable to load commercial documents";
-      }
-      return [];
-    }
+      return {
+        ...file,
+        downloadUrl: signedData?.signedUrl || "#"
+      };
+    })
+  );
 
-    const docsWithUrls = await Promise.all(
-      (data || []).map(async function (file) {
-        const { data: signedData } = await supabaseClient.storage
-          .from("wmas-commercial-files")
-          .createSignedUrl(file.storage_path, 3600);
-
-        return {
-          ...file,
-          downloadUrl: signedData?.signedUrl || "#"
-        };
-      })
-    );
-
-    portalState.commercialFiles = docsWithUrls;
-    renderCommercial(portalState.commercialFiles);
-    return portalState.commercialFiles;
-  }
+  portalState.commercialFiles = docsWithUrls;
+  renderCommercial(portalState.commercialFiles);
+  return portalState.commercialFiles;
+}
 
   async function loadMessages(companyId) {
     const { data, error } = await supabaseClient
@@ -989,6 +1029,24 @@ const awaitingPoJob = visibleJobs.find(function (job) {
       acted_by: userId
     });
   }
+
+async function logFileDownload(fileCategory, file) {
+  if (!portalState.profile || !file) {
+    return;
+  }
+
+  await supabaseClient
+    .from("wmas_file_downloads")
+    .insert({
+      company_id: file.company_id || portalState.profile.company_id || null,
+      job_id: file.job_id || null,
+      file_category: fileCategory,
+      file_title: file.title || "",
+      file_name: file.file_name || "",
+      storage_path: file.storage_path || "",
+      downloaded_by: portalState.profile.id
+    });
+}
 
   async function handleAcceptQuote(job, userId) {
     const statusEl = document.getElementById("commercialActionStatus");
