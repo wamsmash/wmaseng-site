@@ -315,6 +315,63 @@
     statusEl.textContent = `Search active: ${portalState.searchTerm}`;
   }
 
+  async function logFileDownload(fileCategory, file) {
+    if (!portalState.profile || !file) {
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from("wmas_file_downloads")
+      .insert({
+        company_id: file.company_id || portalState.profile.company_id || null,
+        job_id: file.job_id || null,
+        file_category: fileCategory,
+        file_title: file.title || "",
+        file_name: file.file_name || "",
+        storage_path: file.storage_path || "",
+        downloaded_by: portalState.profile.id
+      });
+
+    if (error) {
+      console.error("wmas_file_downloads insert failed", error);
+    }
+  }
+
+  async function triggerTrackedDownload(fileCategory, file) {
+    if (!file || !file.storage_path) {
+      console.error("Missing file or storage path", file);
+      return;
+    }
+
+    try {
+      await logFileDownload(fileCategory, file);
+    } catch (error) {
+      console.error("Download logging failed", error);
+    }
+
+    const bucketName =
+      fileCategory === "technical"
+        ? "wmas-job-files"
+        : "wmas-commercial-files";
+
+    const { data, error } = await supabaseClient.storage
+      .from(bucketName)
+      .createSignedUrl(file.storage_path, 3600);
+
+    if (error || !data?.signedUrl) {
+      console.error("Signed URL failed", error, file.storage_path);
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = data.signedUrl;
+    link.download = file.file_name || "";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   function renderJobs(jobs) {
     const el = document.getElementById("jobsCardContent");
     if (!el) return;
@@ -435,7 +492,7 @@
             <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
               ${
                 latestQuote
-                  ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank" rel="noopener noreferrer">View Quote</a>`
+                  ? `<button class="btn" type="button" data-download-commercial="${latestQuote.id}">View Quote</button>`
                   : ""
               }
               <button class="btn btn-primary" data-accept-job="${job.id}">Accept Quote</button>
@@ -451,7 +508,7 @@
               <div style="margin-top:10px">
                 ${
                   latestQuote
-                    ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank" rel="noopener noreferrer">View Quote</a>`
+                    ? `<button class="btn" type="button" data-download-commercial="${latestQuote.id}">View Quote</button>`
                     : ""
                 }
                 <div style="margin-top:10px">
@@ -483,13 +540,13 @@
               <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
                 ${
                   latestQuote
-                    ? `<a class="btn" href="${latestQuote.downloadUrl}" target="_blank" rel="noopener noreferrer">View Quote</a>`
+                    ? `<button class="btn" type="button" data-download-commercial="${latestQuote.id}">View Quote</button>`
                     : ""
                 }
-                <a class="btn" href="${latestPO.downloadUrl}" target="_blank" rel="noopener noreferrer">View PO</a>
+                <button class="btn" type="button" data-download-commercial="${latestPO.id}">View PO</button>
                 ${
                   withinWindow
-                    ? `<button class="btn" data-delete-po="${job.id}" data-path="${latestPO.storage_path}" data-id="${latestPO.id}">Delete PO</button>`
+                    ? `<button class="btn" data-delete-po="${job.id}" data-path="${latestPO.storage_path}" data-id="${latestPO.id}" style="background:#7a1f1f">Delete PO</button>`
                     : ""
                 }
               </div>
@@ -521,7 +578,7 @@
             <div style="margin-top:10px">
               ${
                 latestInvoice
-                  ? `<a class="btn" href="${latestInvoice.downloadUrl}" target="_blank" rel="noopener noreferrer">View Invoice</a>`
+                  ? `<button class="btn" type="button" data-download-commercial="${latestInvoice.id}">View Invoice</button>`
                   : ""
               }
             </div>
@@ -619,6 +676,17 @@
           await reloadPortalData();
         };
       });
+
+      document.querySelectorAll("[data-download-commercial]").forEach(function (btn) {
+        btn.onclick = async function () {
+          const fileId = btn.getAttribute("data-download-commercial");
+          const file = portalState.commercialFiles.find(function (item) {
+            return String(item.id) === String(fileId);
+          });
+
+          await triggerTrackedDownload("commercial", file);
+        };
+      });
     }, 100);
 
     const awaitingPoJob = visibleJobs.find(function (job) {
@@ -642,56 +710,6 @@
         reloadPortalData();
       }, 32000);
     }
-  }
-
-  async function logFileDownload(fileCategory, file) {
-    if (!portalState.profile || !file) {
-      return;
-    }
-
-    const { error } = await supabaseClient
-      .from("wmas_file_downloads")
-      .insert({
-        company_id: file.company_id || portalState.profile.company_id || null,
-        job_id: file.job_id || null,
-        file_category: fileCategory,
-        file_title: file.title || "",
-        file_name: file.file_name || "",
-        storage_path: file.storage_path || "",
-        downloaded_by: portalState.profile.id
-      });
-
-    if (error) {
-      console.error("wmas_file_downloads insert failed", error);
-    }
-  }
-
-  async function triggerTrackedDownload(fileCategory, file) {
-    if (!file || !file.storage_path) {
-      return;
-    }
-
-    try {
-      await logFileDownload(fileCategory, file);
-    } catch (error) {
-      console.error("Download logging failed", error);
-    }
-
-    const bucketName =
-      fileCategory === "technical"
-        ? "wmas-job-files"
-        : "wmas-commercial-files";
-
-    const { data, error } = await supabaseClient.storage
-      .from(bucketName)
-      .createSignedUrl(file.storage_path, 3600);
-
-    if (error || !data?.signedUrl) {
-      console.error("Signed URL failed", error);
-      return;
-    }
-
-    window.location.href = data.signedUrl;
   }
 
   function renderFiles(files) {
@@ -1128,7 +1146,7 @@
       return false;
     }
 
-    const safeFileName = file.name.replace(/\s+/g, "_");
+    const originalFileName = file.name.trim().replace(/\s+/g, "_");
 
     const companyFolder =
       profile.role === "admin"
@@ -1142,7 +1160,7 @@
       return false;
     }
 
-    const objectPath = `${companyFolder}/${job.job_ref}_${safeFileName}`;
+    const uploadPath = `${companyFolder}/${job.job_ref}_${originalFileName}`;
 
     if (statusEl) {
       statusEl.textContent = "Uploading purchase order";
@@ -1150,7 +1168,7 @@
 
     const uploadResult = await supabaseClient.storage
       .from("wmas-commercial-files")
-      .upload(objectPath, file, { upsert: false });
+      .upload(uploadPath, file, { upsert: false });
 
     if (uploadResult.error) {
       console.error("PO storage upload error", uploadResult.error);
@@ -1160,6 +1178,8 @@
       return false;
     }
 
+    const exactStoragePath = uploadResult.data?.path || uploadPath;
+
     const insertResult = await supabaseClient
       .from("wmas_commercial_files")
       .insert({
@@ -1167,8 +1187,8 @@
         job_id: job.id,
         title: `${job.job_ref} Purchase Order`,
         document_kind: "po",
-        file_name: file.name,
-        storage_path: objectPath,
+        file_name: originalFileName,
+        storage_path: exactStoragePath,
         file_type: file.type || "application/pdf",
         revision: "A",
         visible_to_client: true,
@@ -1535,8 +1555,8 @@
         return;
       }
 
-      const safeFileName = file.name.replace(/\s+/g, "_");
-      const objectPath = `${companyRow.slug}/${jobRef}_${safeFileName}`;
+      const originalFileName = file.name.trim().replace(/\s+/g, "_");
+      const uploadPath = `${companyRow.slug}/${jobRef}_${originalFileName}`;
 
       const bucketName =
         category === "commercial"
@@ -1547,12 +1567,14 @@
 
       const uploadResult = await supabaseClient.storage
         .from(bucketName)
-        .upload(objectPath, file, { upsert: false });
+        .upload(uploadPath, file, { upsert: false });
 
       if (uploadResult.error) {
         statusEl.textContent = uploadResult.error.message || "Upload failed";
         return;
       }
+
+      const exactStoragePath = uploadResult.data?.path || uploadPath;
 
       if (category === "commercial") {
         const insertResult = await supabaseClient
@@ -1562,8 +1584,8 @@
             job_id: jobId,
             title: title || `${jobRef} File`,
             document_kind: documentKind || "document",
-            file_name: file.name,
-            storage_path: objectPath,
+            file_name: originalFileName,
+            storage_path: exactStoragePath,
             file_type: file.type || "application/octet-stream",
             revision: revision,
             visible_to_client: true,
@@ -1583,8 +1605,8 @@
             company_id: companyId,
             job_id: jobId,
             title: title || `${jobRef} File`,
-            file_name: file.name,
-            storage_path: objectPath,
+            file_name: originalFileName,
+            storage_path: exactStoragePath,
             file_type: file.type || "application/octet-stream",
             revision: revision,
             visible_to_client: true,
@@ -1955,12 +1977,12 @@
     }
 
     for (const file of files) {
-      const safeFileName = file.name.replace(/\s+/g, "_");
-      const objectPath = `${companyFolder}/${requestRef}_${safeFileName}`;
+      const originalFileName = file.name.trim().replace(/\s+/g, "_");
+      const uploadPath = `${companyFolder}/${requestRef}_${originalFileName}`;
 
       const uploadResult = await supabaseClient.storage
         .from("wmas-quote-request-files")
-        .upload(objectPath, file, { upsert: false });
+        .upload(uploadPath, file, { upsert: false });
 
       if (uploadResult.error) {
         if (insertedFileIds.length) {
@@ -1985,7 +2007,8 @@
         return;
       }
 
-      uploadedPaths.push(objectPath);
+      const exactStoragePath = uploadResult.data?.path || uploadPath;
+      uploadedPaths.push(exactStoragePath);
 
       const fileInsert = await supabaseClient
         .from("wmas_quote_request_files")
@@ -1993,8 +2016,8 @@
           quote_request_id: requestRow.id,
           company_id: portalState.profile.company_id,
           title: file.name,
-          file_name: file.name,
-          storage_path: objectPath,
+          file_name: originalFileName,
+          storage_path: exactStoragePath,
           file_type: file.type || "application/octet-stream",
           uploaded_by: portalState.profile.id
         })
@@ -2317,8 +2340,6 @@
 
           if (statusEl) statusEl.textContent = "Uploading quote";
 
-          const safeFileName = file.name.replace(/\s+/g, "_");
-
           const { data: companyRow } = await supabaseClient
             .from("wmas_companies")
             .select("slug")
@@ -2339,11 +2360,12 @@
             return;
           }
 
-          const objectPath = `${companyRow.slug}/${jobRow.job_ref}_${safeFileName}`;
+          const originalFileName = file.name.trim().replace(/\s+/g, "_");
+          const uploadPath = `${companyRow.slug}/${jobRow.job_ref}_${originalFileName}`;
 
           const uploadResult = await supabaseClient.storage
             .from("wmas-commercial-files")
-            .upload(objectPath, file, { upsert: false });
+            .upload(uploadPath, file, { upsert: false });
 
           if (uploadResult.error) {
             if (statusEl) {
@@ -2352,6 +2374,8 @@
             return;
           }
 
+          const exactStoragePath = uploadResult.data?.path || uploadPath;
+
           const insertResult = await supabaseClient
             .from("wmas_commercial_files")
             .insert({
@@ -2359,8 +2383,8 @@
               job_id: jobId,
               title: title || `${jobRow.job_ref} Quote`,
               document_kind: "quote",
-              file_name: file.name,
-              storage_path: objectPath,
+              file_name: originalFileName,
+              storage_path: exactStoragePath,
               file_type: file.type || "application/pdf",
               revision: "A",
               visible_to_client: true,
